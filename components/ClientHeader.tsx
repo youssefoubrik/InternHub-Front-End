@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Profile from "@/components/Profile";
 import SignUpDropDown from "@/components/SignUpDropDown";
 import { useAuth } from "@/context/authContext";
 
 function ClientHeader() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
+  const { isAuthenticated, currentUser } = useAuth();
 
   return (
     <header className="px-14 bg-[#f0f5fa] flex justify-between items-center">
@@ -17,8 +15,8 @@ function ClientHeader() {
       </Link>
 
       <div className="flex items-center gap-4">
-        {isAuthenticated ? (
-          <Profile />
+        {isAuthenticated && currentUser ? (
+          <Profile user={currentUser} />
         ) : (
           <div className="flex items-center gap-6">
             <SignUpDropDown />

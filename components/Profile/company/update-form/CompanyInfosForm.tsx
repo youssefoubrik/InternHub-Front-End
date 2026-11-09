@@ -1,19 +1,55 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import ProfileAvatar from "../../ProfileAvatar";
-import { useUser } from "@/context/userContext";
 import InputField from "@/components/InputField";
-import TextEditor from "@/components/TextEditor";
 import { Label } from "@/components/ui/label";
 import { Globe, Linkedin, Twitter } from "lucide-react";
+import { useCompanyProfileDraftStore } from "@/stores/companyProfileDraftStore";
+import { CompanyProfileErrors, CompanyProfileField } from "@/lib/validation/companyProfile";
+
+const TextEditor = dynamic(() => import("@/components/TextEditor"), {
+  ssr: false,
+  loading: () => <div className="min-h-[150px] rounded-md bg-white" />,
+});
 
 interface CompanyInfosFormProps {
   logo: File | null;
   setLogo: (file: File | null) => void;
+  errors: CompanyProfileErrors;
+  onFieldChange: (field: CompanyProfileField) => void;
 }
 
-const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
-  const { company, setCompany } = useUser();
+const CompanyInfosForm = ({ logo, setLogo, errors, onFieldChange }: CompanyInfosFormProps) => {
+  const company = useCompanyProfileDraftStore((state) => state.draft);
+  const updateDraft = useCompanyProfileDraftStore((state) => state.updateDraft);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = useState("");
+
+  useEffect(() => {
+    if (!logo) {
+      setLogoPreview("");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(logo);
+    setLogoPreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [logo]);
+
+  if (!company) return null;
+
+  const updateField = (field: keyof typeof company, value: string) => {
+    updateDraft((draft) => ({ ...draft, [field]: value }));
+    onFieldChange(field as CompanyProfileField);
+  };
+
+  const updateLink = (field: "linkedin" | "twitter" | "website", value: string) => {
+    updateDraft((draft) => ({ ...draft, links: { ...draft.links, [field]: value } }));
+    onFieldChange(`links.${field}`);
+  };
+
+  const error = (field: CompanyProfileField) => errors[field] && (
+    <p className="col-start-2 text-sm text-red-600" role="alert">{errors[field]}</p>
+  );
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -26,7 +62,7 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
           <ProfileAvatar
             className="w-28 h-28 text-5xl bg-gray-800 overflow-hidden"
             avatarImage={
-              logo ? URL.createObjectURL(logo) : company?.profilePicture ?? ""
+              logoPreview || company?.profilePicture || ""
             }
             avatarFallback={<span className="text-white">Logo</span>}
           />
@@ -50,9 +86,10 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
           type="text"
           placeholder="Company Name"
           value={company.name}
-          onChange={(e) => setCompany({ ...company, name: e.target.value })}
+          onChange={(e) => updateField("name", e.target.value)}
           className="w-full px-4 py-2 bg-white border border-gray-300 rounded"
         />
+        {error("name")}
       </div>
       <div className="grid grid-cols-[120px_1fr] gap-4">
         <Label htmlFor="phone" className="self-center">
@@ -60,12 +97,13 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
         </Label>
         <InputField
           id="phone"
-          type="text"
+          type="tel"
           placeholder="Phone Number"
           value={company?.tel}
-          onChange={(e) => setCompany({ ...company, tel: e.target.value })}
+          onChange={(e) => updateField("tel", e.target.value)}
           className="w-full px-4 py-2 bg-white border border-gray-300 rounded"
         />
+        {error("tel")}
       </div>
       <div className="grid grid-cols-[120px_1fr] gap-4">
         <Label htmlFor="ice" className="self-center">
@@ -76,9 +114,10 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
           type="text"
           placeholder="ICE"
           value={company.ice}
-          onChange={(e) => setCompany({ ...company, ice: e.target.value })}
+          onChange={(e) => updateField("ice", e.target.value)}
           className="w-full px-4 py-2 bg-white border border-gray-300 rounded"
         />
+        {error("ice")}
       </div>
       <div className="grid grid-cols-[120px_1fr] gap-4">
         <Linkedin className="self-center" />
@@ -86,14 +125,10 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
           type="text"
           placeholder="LinkedIn link"
           value={company.links?.linkedin}
-          onChange={(e) =>
-            setCompany({
-              ...company,
-              links: { ...company.links, linkedin: e.target.value },
-            })
-          }
+          onChange={(e) => updateLink("linkedin", e.target.value)}
           className="w-full px-4 py-2 bg-white border border-gray-300 rounded"
         />
+        {error("links.linkedin")}
       </div>
       <div className="grid grid-cols-[120px_1fr] gap-4">
         <Twitter className="self-center" />
@@ -101,14 +136,10 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
           type="text"
           placeholder="Twitter link"
           value={company.links?.twitter}
-          onChange={(e) =>
-            setCompany({
-              ...company,
-              links: { ...company.links, twitter: e.target.value },
-            })
-          }
+          onChange={(e) => updateLink("twitter", e.target.value)}
           className="w-full px-4 py-2 bg-white border border-gray-300 rounded"
         />
+        {error("links.twitter")}
       </div>
       <div className="grid grid-cols-[120px_1fr] gap-4">
         <Globe className="self-center" />
@@ -116,22 +147,16 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
           type="text"
           placeholder="Website link"
           value={company.links?.website}
-          onChange={(e) =>
-            setCompany({
-              ...company,
-              links: { ...company.links, website: e.target.value },
-            })
-          }
+          onChange={(e) => updateLink("website", e.target.value)}
           className="w-full px-4 py-2 bg-white border border-gray-300 rounded"
         />
+        {error("links.website")}
       </div>
       <div className="grid grid-cols-[120px_1fr] gap-4">
         <Label htmlFor="description">Description</Label>
         <TextEditor
           value={company.description}
-          onChange={(value: string) =>
-            setCompany({ ...company, description: value })
-          }
+          onChange={(value: string) => updateField("description", value)}
           style={{
             minHeight: "150px",
             backgroundColor: "#fff",
@@ -140,6 +165,7 @@ const CompanyInfosForm = ({ logo, setLogo }: CompanyInfosFormProps) => {
           modules={{ toolbar: true }}
           className="w-full"
         />
+        {error("description")}
       </div>
     </div>
   );

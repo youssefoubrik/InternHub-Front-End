@@ -39,6 +39,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   defaultInternship?: string;
+  internshipOptions?: Internship[];
   hiddenEmailInput?: boolean ;
 }
 
@@ -46,6 +47,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   defaultInternship,
+  internshipOptions,
   hiddenEmailInput=false
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -64,6 +66,11 @@ export function DataTable<TData, TValue>({
   const [loading, setLoading] = React.useState<boolean>(false);
 
   React.useEffect(() => {
+    if (internshipOptions) return;
+    if (!company?.id) {
+      setCompanyInternships([]);
+      return;
+    }
     const fetchInternshipsOptions = async () => {
       try {
         setLoading(true);
@@ -72,17 +79,11 @@ export function DataTable<TData, TValue>({
       } catch (error) {
         console.error("failed to fetch internships");
       } finally {
-        setLoading(true);
+        setLoading(false);
       }
     };
     fetchInternshipsOptions();
-  }, [company.id]);
-
-  React.useEffect(() => {
-    if (defaultInternship) {
-      setInternshipFilter(defaultInternship);
-    }
-  }, [defaultInternship]);
+  }, [company?.id, internshipOptions, getCompanyInternships]);
 
   const table = useReactTable<TData>({
     data,
@@ -98,6 +99,12 @@ export function DataTable<TData, TValue>({
       columnFilters,
     },
   });
+
+  React.useEffect(() => {
+    const value = defaultInternship ?? "";
+    setInternshipFilter(value);
+    table.getColumn("internshipTitle")?.setFilterValue(value || undefined);
+  }, [defaultInternship, table]);
 
   console.log("hidden email : ",hiddenEmailInput);
 
@@ -117,10 +124,11 @@ export function DataTable<TData, TValue>({
         />
         )}
         <InternshipCommandSearch
-          options={companyInternships || []}
+            options={internshipOptions ?? companyInternships}
           onSelect={(value) => {
             setInternshipFilter(value);
-            table.getColumn("Internship")?.setFilterValue(value);
+            table.getColumn("internshipTitle")?.setFilterValue(value || undefined);
+              table.setPageIndex(0);
           }}
           defaultValue={internshipFilter}
         />
@@ -193,7 +201,8 @@ export function DataTable<TData, TValue>({
 
             table.getColumn("email")?.setFilterValue("");
             table.getColumn("status")?.setFilterValue(undefined);
-            table.getColumn("Internship")?.setFilterValue("");
+            table.getColumn("internshipTitle")?.setFilterValue(undefined);
+            table.setPageIndex(0);
           }}
         />
       </div>

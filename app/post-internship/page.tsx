@@ -1,13 +1,20 @@
 "use client";
 import PostInternshipForm from "@/components/Internship/PostInternshipForm";
 import { useAuth } from "@/context/authContext";
-import { Role } from "@/types/types";
 import { Unauthorized } from "@/components/Unauthorized";
-import { useUser } from "@/context/userContext";
 import { hasRoleCompany } from "@/utils/checkAuthority";
+import { useEffect, useState } from "react";
+import { useInternship } from "@/context/internshipContext";
 
 function page() {
   const { currentUser } = useAuth();
+  const { resetInternshipForm } = useInternship();
+  const [formReady, setFormReady] = useState(false);
+
+  useEffect(() => {
+    resetInternshipForm();
+    setFormReady(true);
+  }, [resetInternshipForm]);
 
   return currentUser && hasRoleCompany(currentUser?.role) ? (
     <div className="flex flex-col py-10">
@@ -16,7 +23,7 @@ function page() {
       </h2>
 
       <div className="flex-1 pt-8 w-[90%] mx-auto flex justify-center items-center">
-        <PostInternshipForm />
+        {formReady && <PostInternshipForm />}
       </div>
     </div>
   ) : (

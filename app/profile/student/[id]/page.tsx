@@ -7,7 +7,7 @@ import ExperienceCard from "@/components/Profile/ExperienceCard";
 import FormationCard from "@/components/Profile/FormationCard";
 import InfosCard from "@/components/Profile/InfosCard";
 import PortfolioCard from "@/components/Profile/PortfolioCard";
-import ProjectCard from "@/components/Profile/ProjectCard"
+import ProjectCard from "@/components/Profile/ProjectCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,10 @@ import { Role } from "@/types/types";
 import { AlertTriangle, Flag, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import axios from "@/lib/axios";
+import { getValidToken } from "@/utils/auth";
+import toast from "react-hot-toast";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 const page = () => {
   const params = useParams();
@@ -26,24 +30,79 @@ const page = () => {
   const { currentUser, loading, setLoading } = useAuth();
   const [flagReason, setFlagReason] = useState("");
   const [flagDescription, setFlagDescription] = useState("");
+  const [flagReasonError, setFlagReasonError] = useState("");
+  const [isSubmittingFlag, setIsSubmittingFlag] = useState(false);
+  const [profileResolved, setProfileResolved] = useState(false);
   const { checkIsUserProfile, getStudent, setStudent, student, isUserProfile } =
     useUser();
 
+  useEffect(() => () => useProfileEditLockStore.getState().reset(), []);
+
   useEffect(() => {
+    let active = true;
     const fetchStudent = async () => {
+      setProfileResolved(false);
       setLoading(true);
       const response = await getStudent(studentId);
-      if (student) {
-        setStudent(response);
-      }
+      if (!active) return;
+      if (response) setStudent(response);
       checkIsUserProfile(studentId);
+      setProfileResolved(true);
       setLoading(false);
     };
     fetchStudent();
+    return () => {
+      active = false;
+    };
   }, [studentId, currentUser]);
 
   const handleFlagUser = () => {
+    setFlagReasonError("");
     setIsFlagModalOpen(true);
+  };
+
+  const handleSubmitFlag = async () => {
+    const reason = flagReason.trim();
+    if (!reason) {
+      setFlagReasonError("Please provide a reason for flagging this student.");
+      toast.error("Please provide a reason for flagging this student.");
+      return;
+    }
+
+    const token = getValidToken();
+    if (!token) {
+      toast.error("Authentication required to submit a flag.");
+      return;
+    }
+
+    setIsSubmittingFlag(true);
+    try {
+      await axios.post(
+        "/flagged-students",
+        {
+          targetId: studentId,
+          reason,
+          description: flagDescription.trim(),
+          screenshots: [],
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      setIsFlagModalOpen(false);
+      setFlagReason("");
+      setFlagDescription("");
+      setFlagReasonError("");
+      toast.success(
+        "Student has been flagged successfully. Our team will review your report.",
+      );
+    } catch (error) {
+      console.error("Error flagging student:", error);
+      toast.error("Failed to submit the student flag. Please try again.");
+    } finally {
+      setIsSubmittingFlag(false);
+    }
   };
 
   const scrollToFlag = () => {
@@ -54,7 +113,7 @@ const page = () => {
 
   return student && Object.keys(student).length > 0 ? (
     <div className="py-11 flex flex-col gap-5 px-14">
-      {showAlert && !isUserProfile && (
+      {!loading && profileResolved && showAlert && !isUserProfile && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
@@ -84,7 +143,8 @@ const page = () => {
       <FormationCard />
       <ProjectCard />
       <CertificateCard />
-      {!isUserProfile && (
+
+      {!loading && profileResolved && !isUserProfile && (
         <div className="flex justify-center mt-8">
           <Button
             id="flag-button"
@@ -97,24 +157,25 @@ const page = () => {
           </Button>
         </div>
       )}
+
       <EditModal
         isOpenModal={isFlagModalOpen}
         setIsOpenModal={setIsFlagModalOpen}
-        className="bg-white max-w-lg flex flex-col text-black"
+        className="bg-white flex flex-col text-black"
         title="Flag Student as Suspicious"
         titleClassName="text-xl font-medium"
         cancelButton="Cancel"
         cancelButtonClassName="bg-gray-200 text-black border-gray-300 hover:bg-gray-300"
-        onCancel={() => setIsFlagModalOpen(false)}
+        onCancel={() => {
+          setIsFlagModalOpen(false);
+          setFlagReasonError("");
+        }}
         confirmButton="Submit Flag"
         confirmButtonClassName="bg-red-600 hover:bg-red-700 text-white"
-        onConfirm={() => {
-          // Handle flag submission
-          setIsFlagModalOpen(false);
-          alert("Thank you for your report. Our team will review it shortly.");
-        }}
+        confirmButtonDisabled={isSubmittingFlag}
+        onConfirm={handleSubmitFlag}
         body={
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6 pr-2">
             <div className="bg-gray-100 p-4 -mx-6 -mt-2 border-b border-gray-200">
               <div className="flex gap-3 items-start">
                 <div className="bg-orange-600 p-2 rounded-md">
@@ -133,21 +194,31 @@ const page = () => {
               <div>
                 <Label htmlFor="flag-reason">Reason</Label>
                 <InputField
+                  id="flag-reason"
                   type="text"
                   value={flagReason}
-                  onChange={(e) => setFlagReason(e.target.value)}
+                  onChange={(e) => {
+                    setFlagReason(e.target.value);
+                    if (e.target.value.trim()) setFlagReasonError("");
+                  }}
                   placeholder="Select reason..."
                   className="w-full bg-white"
                   required
                 />
+                {flagReasonError && (
+                  <p className="mt-1 text-sm text-red-600" role="alert">
+                    {flagReasonError}
+                  </p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="flag-description">Description</Label>
                 <Textarea
+                  id="flag-description"
                   value={flagDescription}
                   onChange={(e) => setFlagDescription(e.target.value)}
-                  placeholder="Please provide specific details about why you are flagging this company..."
+                  placeholder="Please provide specific details about why you are flagging this student..."
                   className="w-full bg-white"
                 />
               </div>

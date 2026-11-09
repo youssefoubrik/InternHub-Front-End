@@ -17,7 +17,7 @@ interface CertificatInfosProps {
 const CertificatInfos: React.FC<CertificatInfosProps> = ({
   editedCertificat,
   updateEditedCertificat,
-  setFile
+  setFile,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -25,7 +25,7 @@ const CertificatInfos: React.FC<CertificatInfosProps> = ({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setFile(file || null);
-    
+
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -104,14 +104,17 @@ const CertificatInfos: React.FC<CertificatInfosProps> = ({
             value={editedCertificat.title}
             className="w-full focus:outline-none focus:ring-1 focus:ring-primary rounded-md focus:text-black text-gray-500 placeholder:text-gray-500"
             onChange={(e) =>
-              updateEditedCertificat({ ...editedCertificat, title: e.target.value })
+              updateEditedCertificat({
+                ...editedCertificat,
+                title: e.target.value,
+              })
             }
           />
         </div>
       </div>
       <div className="flex items-center gap-2">
         <div className="group flex items-center gap-2 w-full">
-          <FileText className="text-black group-focus-within:text-primary transition-colors"/>
+          <FileText className="text-black group-focus-within:text-primary transition-colors" />
           <YearPicker
             value={editedCertificat.date}
             onValueChange={(value) =>
@@ -137,4 +140,4 @@ const CertificatInfos: React.FC<CertificatInfosProps> = ({
   );
 };
 
-export default CertificatInfos; 
+export default CertificatInfos;

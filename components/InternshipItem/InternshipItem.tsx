@@ -29,8 +29,6 @@ interface InternshipProps {
 function InternshipItem({ internship }: InternshipProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const { isUserProfile } = useUser();
-  const { currentUser } = useAuth();
   const { countInternshipApplications } = useInternship();
   const [countApplicants, setCountApplications] = useState<number>(0);
 
@@ -52,7 +50,7 @@ function InternshipItem({ internship }: InternshipProps) {
   return (
     <div className="p-8 bg-white rounded-xl flex flex-col gap-5">
       <div className="flex items-center gap-2">
-        <div className="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center mr-2">
+        <div className="w-14 h-14 bg-gray-200 rounded-md shrink-0 flex items-center justify-center mr-2">
           <Image
             src={internship.company?.profilePicture || "/user.png"}
             alt={internship.company?.name || "User"}
@@ -62,12 +60,12 @@ function InternshipItem({ internship }: InternshipProps) {
           />
         </div>
         <div
-          className="flex flex-col cursor-pointer"
+          className="flex flex-col cursor-pointer shrink-1 truncate"
           onClick={() => {
             router.push(`/internships/${internship.id}`);
           }}
         >
-          <CardTitle className="text-xl font-bold truncate hover:underline">
+          <CardTitle className="text-xl font-bold truncate flex-wrap hover:underline">
             {internship?.title}
           </CardTitle>
           {internship?.company?.name ?? "Not set"}
@@ -99,13 +97,15 @@ function InternshipItem({ internship }: InternshipProps) {
         ))}
       </div>
 
-      <div className="flex justify-between items-center text-sm text-muted-foreground mt-2">
-        <span className="flex items-center gap-1">
-          <Calendar size={14} />
+      <div className="flex flex-col justify-between text-sm text-muted-foreground mt-2">
+        <span className="flex items-center gap-1 mb-3">
+          <Calendar size={15} />
           Posted {formatDates(internship.createdAt)}
         </span>
 
-        <span>{countApplicants} applicant(s)</span>
+        <span className="flex justify-end w-full">
+          {countApplicants} applicant(s)
+        </span>
       </div>
 
       {isOpen && (

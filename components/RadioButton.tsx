@@ -45,24 +45,25 @@ const RadioButton: React.FC<RadioButtonProps> = ({
         <div
           key={index}
           className={clsx(
-            "flex items-center space-x-2 rounded-lg transition-all",
+            "flex items-center rounded-lg transition-all",
             value === itemsValue[index] && classNameItemContainerWhenChecked,
-            classNameItemContainer
+            classNameItemContainer,
           )}
         >
           <RadioGroupItem
             value={itemsValue[index]}
             id={item}
             className={clsx(
+              "mr-2",
               classNameItem,
-              value === itemsValue[index] && classNameItemWhenChecked
+              value === itemsValue[index] && classNameItemWhenChecked,
             )}
           />
           <Label
             htmlFor={item}
             className={clsx(
               value === itemsValue[index] && classNameLabelWhenChecked,
-              classNameLabel
+              classNameLabel,
             )}
           >
             {item}

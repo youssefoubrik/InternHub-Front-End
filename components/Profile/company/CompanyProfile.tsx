@@ -1,62 +1,52 @@
 "use client";
 import { useUser } from "@/context/userContext";
-import {
-  deleteFileFromSupabase,
-  uploadFileToSupabase,
-} from "@/lib/supabaseStorage";
-import { Role } from "@/types/types";
+import { deleteFile, uploadFile } from "@/lib/storageApi";
 import React, { useRef } from "react";
 import toast from "react-hot-toast";
 import ProfileAvatar from "../ProfileAvatar";
 import {
-  AtSign,
   Building2,
-  Dot,
   Globe,
   Linkedin,
+  Mail,
   RotateCcw,
-  Router,
   Smartphone,
   Twitter,
   UserPen,
 } from "lucide-react";
 import Overlay from "@/components/Overlay";
-import Button from "@/components/Button";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/authContext";
+import Link from "next/link";
 
 const CompanyProfile = () => {
-  const { currentUser } = useAuth();
-  const { company, isUserProfile } = useUser();
-  console.log("Company : ", company);
+  const { company, updateCompany, isUserProfile } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  console.log("company role : ", company?.role);
-  console.log("current user role : ", currentUser?.role as Role);
-  const router = useRouter();
 
   const handleImageSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (!isUserProfile) return;
 
     const file = event.target.files?.[0];
     if (file) {
       try {
-        // Upload file to Supabase
-        const publicUrl = await uploadFileToSupabase(file, {
-          bucketName: "images",
-          fileName: `profile-picture-${company?.id}.${file.name
-            .split(".")
-            .pop()}`,
+        const publicUrl = await uploadFile(file);
+        const saved = await updateCompany({
+          ...company,
+          profilePicture: publicUrl,
         });
-
-        // Update student with the new profile picture URL
-        // updateCompany({
-        //   ...student,
-        //   profilePicture: publicUrl,
-        // });
+        if (!saved) return;
+        if (company.profilePicture) {
+          try {
+            await deleteFile(company.profilePicture);
+          } catch (error) {
+            toast.error(
+              "Company logo updated, but the old logo could not be deleted" +
+                error,
+            );
+          }
+        }
       } catch (error) {
-        console.error("Error uploading profile picture:", error);
         toast.error("Failed to upload profile picture:" + error);
         // Handle error (show toast, alert, etc.)
       }
@@ -68,17 +58,17 @@ const CompanyProfile = () => {
     e.stopPropagation();
     if (company.profilePicture) {
       try {
-        // Extract filename from URL
-        const filename = company?.profilePicture.split("/").pop() || "";
-        // Delete from Supabase
-        await deleteFileFromSupabase("images", filename);
-        // Update Company
-        // updateCompany({
-        //   ...company?,
-        //   profilePicture: "",
-        // });
+        const saved = await updateCompany({ ...company, profilePicture: "" });
+        if (!saved) return;
+        try {
+          await deleteFile(company.profilePicture);
+        } catch (error) {
+          toast.error(
+            "Company logo was removed, but the old image could not be deleted" +
+              error,
+          );
+        }
       } catch (error) {
-        console.error("Error deleting profile picture:", error);
         toast.error("Failed to delete profile picture:" + error);
         // Handle error (show toast, alert, etc.)
       }
@@ -95,11 +85,9 @@ const CompanyProfile = () => {
     fileInputRef.current?.click();
   };
 
-  console.log("is company? : ", isUserProfile);
-
   return (
-    <div className="bg-gray-50 border-primary-hover shadow-sm rounded-lg py-6 px-5 w-[70%] space-y-7">
-      <div className="flex gap-5 items-center">
+    <div className="bg-gray-50 border-primary-hover shadow-sm rounded-lg py-6 px-5 md:w-[65%] w-full space-y-7">
+      <div className="flex flex-col md:flex-row gap-5 items-center w-full">
         <div>
           <input
             type="file"
@@ -143,14 +131,12 @@ const CompanyProfile = () => {
         </div>
         {isUserProfile && (
           <div className="w-full flex justify-end">
-            <Button
-              label="Edit Profile"
-              className="w-fit mt-2"
-              onClick={() => {
-                router.push("/profile/company/update-form");
-              }}
-              outline={true}
-            />
+            <Link
+              className="w-fit mt-2 py-2 px-6 rounded-md border flex items-center gap-3 transition-all duration-200 ease-in-out outline-none border-primary hover:opacity-75 text-primary"
+              href="/profile/company/update-form"
+            >
+              Edit Profile
+            </Link>
           </div>
         )}
       </div>
@@ -159,13 +145,14 @@ const CompanyProfile = () => {
           <h3 className="font-medium mb-2">Contact Information</h3>
           <div className="space-y-1">
             <p className="text-base text-gray-600 flex gap-2 items-center">
-              <Smartphone className="w-5 h-5" />: {company?.tel || "Not set"}
+              <Smartphone className="w-5 h-5 shrink-0" />:{" "}
+              {company?.tel || "Not set"}
             </p>
             <p className="text-base text-gray-600 flex gap-2 items-center">
-              <AtSign className="w-5 h-5" />:
+              <Mail className="w-5 h-5 shrink-0" />:
               <a
                 href={`${company?.email ? `mailto:${company?.email}` : "#"}`}
-                className="text-blue-500 hover:text-blue-600"
+                className="text-blue-500 hover:text-blue-600 truncate"
               >
                 {company?.email || "Not set"}
               </a>
@@ -187,7 +174,7 @@ const CompanyProfile = () => {
             <a
               href={company?.links?.linkedin ?? "#"}
               target={company?.links?.linkedin && "_blank"}
-              className="text-blue-500 hover:text-blue-600"
+              className="text-blue-500 hover:text-blue-600 truncate"
             >
               {company?.links?.linkedin ? "LinkedIn Profile" : "Not set"}
             </a>
@@ -197,7 +184,7 @@ const CompanyProfile = () => {
             <a
               href={company?.links?.twitter ?? "#"}
               target={company?.links?.linkedin && "_blank"}
-              className="text-blue-500 hover:text-blue-600"
+              className="text-blue-500 hover:text-blue-600 truncate"
             >
               {company?.links?.twitter ? "Twitter Profile" : "Not set"}
             </a>
@@ -207,7 +194,7 @@ const CompanyProfile = () => {
             <a
               href={company?.links?.website ?? "#"}
               target={company?.links?.linkedin && "_blank"}
-              className="text-blue-500 hover:text-blue-600"
+              className="text-blue-500 hover:text-blue-600 truncate"
             >
               {company?.links?.website ? "Visit Our Website" : "Not set"}
             </a>

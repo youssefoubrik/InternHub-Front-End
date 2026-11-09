@@ -9,16 +9,16 @@ import toast from "react-hot-toast";
 import CustomTooltip from "./CustomTooltip";
 import ProjectInfos from "./ProjectInfos";
 import { useUser } from "@/context/userContext";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 import {
-  deleteFileFromSupabase,
-  uploadFileToSupabase,
-} from "@/lib/supabaseStorage";
-import { useAuth } from "@/context/authContext";
+  deleteFile,
+  uploadFile,
+} from "@/lib/storageApi";
 
 interface ProjectContentProps {
   project: Project;
   projects: Project[];
-  setProjects: (projects: Project[]) => void;
+  setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
 }
 
 const ProjectContent: React.FC<ProjectContentProps> = ({
@@ -26,78 +26,60 @@ const ProjectContent: React.FC<ProjectContentProps> = ({
   projects,
   setProjects,
 }) => {
-  const { currentUser } = useAuth();
-  const { student, updateProject, deleteProject, isUserProfile } = useUser();
+  const { updateProject, deleteProject, isUserProfile } = useUser();
   const [isOpenModal, setIsOpenModal] = useState(false);
   const [editedProject, setEditedProject] = useState<Project>({} as Project);
   const [file, setFile] = useState<File | null>(null);
+  const editorId = `project-${project.id}`;
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
+  const releaseEditor = useProfileEditLockStore((state) => state.release);
 
   const handleCancel = () => {
     setEditedProject(project);
+    setFile(null);
     setIsOpenModal(false);
+    releaseEditor(editorId);
   };
 
   const handleConfirm = async () => {
-    if (!editedProject?.title) {
+    const title = editedProject?.title?.trim() || "";
+    if (!title) {
       toast.error("Please enter a project title");
       return;
     }
 
-    if (!editedProject?.link) {
-      toast.error("Please enter a link to your project");
-      return;
+    const link = editedProject.link?.trim() || "";
+    if (link) {
+      try {
+        const url = new URL(link);
+        if (!["http:", "https:"].includes(url.protocol)) throw new Error();
+      } catch {
+        toast.error("Please enter a valid http or https URL");
+        return;
+      }
     }
 
     try {
-      new URL(editedProject.link);
-    } catch (error) {
-      toast.error("Please enter a valid URL");
-      return;
-    }
-
-    if (!editedProject.image) {
-      toast.error("Please add a project image");
-      return;
-    }
-
-    if (file) {
-      // Extract the filename from the URL
-      const urlParts = editedProject.image.split("/");
-      const filename = urlParts[urlParts.length - 1];
-
-      console.log("filename : ", filename);
-      // Delete from Supabase
-      await deleteFileFromSupabase("images", decodeURIComponent(filename));
-      console.log("File deleted");
-      try {
-        const publicUrl = await uploadFileToSupabase(file as File, {
-          bucketName: "images",
-          fileName: `project-${editedProject.title}-${student?.id}.${file?.name
-            .split(".")
-            .pop()}`,
-        });
-        const updatedProject = await updateProject({
-          ...editedProject,
-          image: publicUrl,
-        });
-        setEditedProject(updatedProject);
-        setProjects(
-          projects.map((p: Project) =>
-            p.id === project.id ? updatedProject : p
-          )
-        );
-      } catch (error) {
-        toast.error("Failed to update project : " + error);
+      const previousImage = editedProject.image;
+      const image = file ? await uploadFile(file) : previousImage;
+      const updatedProject = await updateProject({ ...editedProject, title, image, link });
+      if (!updatedProject) {
+        toast.error("Failed to update project");
         return;
       }
-    } else {
-      const updatedProject = await updateProject(editedProject);
-      if (!updatedProject) toast.error("Failed to update project");
-      toast.success("Project updated successfully");
+      if (file && previousImage) await deleteFile(previousImage);
+
       setEditedProject(updatedProject);
+      setProjects((current) =>
+        current.map((item) => item.id === updatedProject.id ? updatedProject : item)
+      );
+      setFile(null);
+      setIsOpenModal(false);
+      releaseEditor(editorId);
+      toast.success("Project updated successfully");
+    } catch (error) {
+      toast.error("Failed to update project : " + error);
     }
-    window.location.reload();
-    setIsOpenModal(false);
   };
 
   const getFullUrl = (url: string) => {
@@ -109,18 +91,12 @@ const ProjectContent: React.FC<ProjectContentProps> = ({
   const handleDelete = async () => {
     try {
       // Extract the filename from the URL
-      const urlParts = project.image.split("/");
-      const filename = urlParts[urlParts.length - 1];
-
-      console.log("filename : ", filename);
-      // Delete from Supabase
-      await deleteFileFromSupabase("images", decodeURIComponent(filename));
-
       // Delete from database
       await deleteProject(project);
+      await deleteFile(project.image);
 
       // Update state
-      setProjects(projects.filter((p: Project) => p.id !== project.id));
+      setProjects((current) => current.filter((p) => p.id !== project.id));
 
       toast.success("Project deleted successfully");
     } catch (error) {
@@ -137,20 +113,36 @@ const ProjectContent: React.FC<ProjectContentProps> = ({
   return (
     <div className="rounded-lg flex flex-col justify-between border shadow-md hover:scale-105 transition-all duration-300">
       <div className="relative overflow-hidden w-full rounded-t-lg border-b-gray-300 border-[1px] group">
-        <a
-          href={getFullUrl(project?.link)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img
-            src={project?.image}
-            alt="Thumbnail"
-            className="w-full h-40 object-cover group-hover:rotate-2 group-hover:scale-110 duration-100 ease-in cursor-pointer"
-          />
-          <Overlay
-            children={<Eye className="w-14 h-14 text-primary-hover" />}
-          />
-        </a>
+        {project?.link ? (
+          <a href={getFullUrl(project.link)} target="_blank" rel="noopener noreferrer">
+            {project?.image ? (
+              <img
+                src={project.image}
+                alt="Thumbnail"
+                className="w-full h-40 object-cover group-hover:rotate-2 group-hover:scale-110 duration-100 ease-in cursor-pointer"
+              />
+            ) : (
+              <div className="h-40 w-full bg-gray-100 flex items-center justify-center text-gray-500">
+                No image
+              </div>
+            )}
+            <Overlay children={<Eye className="w-14 h-14 text-primary-hover" />} />
+          </a>
+        ) : (
+          <div>
+            {project?.image ? (
+            <img
+              src={project.image}
+              alt="Thumbnail"
+              className="w-full h-40 object-cover"
+            />
+            ) : (
+              <div className="h-40 w-full bg-gray-100 flex items-center justify-center text-gray-500">
+                No image
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="text-base font-medium text-start px-2 mt-4 mb-6">
@@ -161,7 +153,9 @@ const ProjectContent: React.FC<ProjectContentProps> = ({
         <div className="flex w-full font-medium text-primary divide-x-2 divide-primary-hover text-center border-t-primary-hover border-t-[2px]">
           <div
             className="w-full rounded-bl-lg py-2 cursor-pointer hover:bg-primary hover:text-white"
-            onClick={() => setIsOpenModal(true)}
+            onClick={() => {
+              if (acquireEditor(editorId)) setIsOpenModal(true);
+            }}
           >
             Edit
           </div>
@@ -175,7 +169,10 @@ const ProjectContent: React.FC<ProjectContentProps> = ({
       )}
       <EditModal
         isOpenModal={isOpenModal}
-        setIsOpenModal={setIsOpenModal}
+        setIsOpenModal={(open) => {
+          if (!open) releaseEditor(editorId);
+          setIsOpenModal(open);
+        }}
         className="bg-white max-w-xl min-h-[60vh] flex flex-col"
         title="Edit Project"
         titleClassName="text-2xl font-medium"

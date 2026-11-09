@@ -9,8 +9,15 @@ import Button from "../Button";
 import { useInternship } from "@/context/internshipContext";
 import { InternshipType } from "@/types/types";
 import { useFilters } from "@/context/FiltersContext";
+import { InternshipPostErrors } from "@/lib/validation/internshipPost";
 
-function JobSkills() {
+function JobSkills({
+  errors,
+  onFieldChange,
+}: {
+  errors: InternshipPostErrors;
+  onFieldChange: (field: "skills" | "tags") => void;
+}) {
   const { internship, setInternship } = useInternship();
   const { filters, handleFilterChange } = useFilters();
 
@@ -27,6 +34,7 @@ function JobSkills() {
         ...internship,
         skills: [...internship?.skills, skillValue],
       });
+      onFieldChange("skills");
       skillInputRef.current.value = "";
     }
   };
@@ -35,7 +43,7 @@ function JobSkills() {
     setInternship({
       ...internship,
       skills: internship?.skills?.filter(
-        (skill: string) => skill !== skillToRemove
+        (skill: string) => skill !== skillToRemove,
       ),
     });
   };
@@ -80,6 +88,11 @@ function JobSkills() {
 
             <Button label="Add Skill" type="button" onClick={handleAddSkill} />
           </div>
+          {errors.skills && (
+            <p className="text-sm text-red-600" role="alert">
+              {errors.skills}
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-2 mt-2">
             {internship?.skills.map((skill: string, index: number) => (
@@ -110,24 +123,34 @@ function JobSkills() {
             Add relevant tags for the internship position.
           </Label>
         </div>
-        <CheckboxButton
-          items={[
-            InternshipType.PFA,
-            InternshipType.PFE,
-            InternshipType.INITIATION,
-          ]}
-          itemsValue={[
-            internship?.tags.includes(InternshipType.PFA),
-            internship?.tags.includes(InternshipType.PFE),
-            internship?.tags.includes(InternshipType.INITIATION),
-          ]}
-          onCheckedFunction={handleCheckedFunction}
-          classNameGroup="flex flex-row justify-between space-y-0 w-full"
-          classNameItemContainer="bg-white border-border border space-x-0 rounded-md cursor-pointer"
-          classNameLabel="cursor-pointer font-medium w-full h-full p-6"
-          classNameItem="hidden"
-          classNameItemContainerWhenChecked="border border-primary text-primary"
-        />
+        <div className="flex-1 flex flex-col gap-2">
+          <CheckboxButton
+            items={[
+              InternshipType.PFA,
+              InternshipType.PFE,
+              InternshipType.INITIATION,
+            ]}
+            itemsValue={[
+              internship?.tags.includes(InternshipType.PFA),
+              internship?.tags.includes(InternshipType.PFE),
+              internship?.tags.includes(InternshipType.INITIATION),
+            ]}
+            onCheckedFunction={(key, value) => {
+              handleCheckedFunction(key, value);
+              onFieldChange("tags");
+            }}
+            classNameGroup="flex flex-row justify-between space-y-0 w-full"
+            classNameItemContainer="bg-white border-border border space-x-0 rounded-md cursor-pointer"
+            classNameLabel="cursor-pointer font-medium w-full h-full p-6"
+            classNameItem="hidden"
+            classNameItemContainerWhenChecked="border border-primary text-primary"
+          />
+          {errors.tags && (
+            <p className="text-sm text-red-600" role="alert">
+              {errors.tags}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ import {
 import EditModal from "@/components/Profile/EditModal";
 import ApplicationProcess from "@/components/internships/ApplicationProcess";
 import InternshipItem from "@/components/InternshipItem/InternshipItem";
-import { uploadFileToSupabase } from "@/lib/supabaseStorage";
+import { uploadFile } from "@/lib/storageApi";
 import { Info } from "lucide-react";
 
 export default function page() {
@@ -41,13 +41,14 @@ export default function page() {
   const router = useRouter();
 
   const [isApplied, setIsApplied] = useState(false);
+  const [applicationCheckComplete, setApplicationCheckComplete] =
+    useState(false);
+  const [applicationCheckFailed, setApplicationCheckFailed] = useState(false);
   const [showApplication, setShowApplication] = useState(false);
   const [cv, setCV] = useState<File | null>(null);
   const [motivationLetter, setMotivationLetter] = useState<File | null>(null);
   const [countApplicants, setCountApplications] = useState<number>(0);
-  const [application, setApplication] = useState<ApplicationRequest | null>(
-    null
-  );
+  const [isApplying, setIsApplying] = useState(false);
 
   useEffect(() => {
     const fetchCurrentInternship = async () => {
@@ -80,46 +81,37 @@ export default function page() {
   }, [currentUser]);
 
   useEffect(() => {
+    let isCurrent = true;
+    setIsApplied(false);
+    setApplicationCheckComplete(false);
+    setApplicationCheckFailed(false);
     const fetchIsApplied = async () => {
-      console.log("once");
-      const isApplied = await isAppliedInternship(
-        id as string,
-        student?.id as string
-      );
-      setIsApplied(isApplied);
+      if (!id || !student?.id || currentUser?.role !== Role.STUDENT) {
+        if (isCurrent && currentUser?.role !== Role.STUDENT)
+          setApplicationCheckComplete(true);
+        return;
+      }
+      const applied = await isAppliedInternship(id as string, student.id);
+      if (!isCurrent) return;
+      if (applied === null) {
+        setApplicationCheckFailed(true);
+        toast.error(
+          "Could not check your application status. Please refresh and try again.",
+        );
+      } else {
+        setIsApplied(applied);
+      }
+      setApplicationCheckComplete(true);
     };
     fetchIsApplied();
-  }, [id, student?.id, showApplication]);
+    return () => {
+      isCurrent = false;
+    };
+  }, [id, student?.id, currentUser?.role]);
 
   const otherJobs = internships.filter(
-    (internship: Internship) => internship.id !== id
+    (internship: Internship) => internship.id !== id,
   );
-
-  // useEffect(() => {
-  //   if (student && internship) {
-  //     setIsApplied(
-  //       internship.applicants
-  //         ?.map((student: Student) => student.id)
-  //         ?.includes(student.id) || false
-  //     );
-  //   }
-  // }, [internship?.applicants, student?.id]);
-
-  // const uploadCV = async (file: File) => {
-  //   try {
-  //     // Upload cv to Supabase
-  //     const publicUrl = await uploadFileToSupabase(file, {
-  //       bucketName: "images",
-  //       fileName: `application-toInternship-${internship?.id}-fromStudent-${
-  //         student?.id
-  //       }-${Date.now()}-cv-${cv?.name}`,
-  //     });
-  //     return publicUrl;
-  //   } catch (error) {
-  //     toast.error("Failed to upload CV:" + error);
-  //   }
-  // };
-
 
   const uploadCV = async (file: File) => {
     try {
@@ -127,21 +119,23 @@ export default function page() {
       if (!navigator.onLine) {
         throw new Error("No internet connection");
       }
-  
-      // Upload cv to Supabase
-      const publicUrl = await uploadFileToSupabase(file, {
-        bucketName: "images",
-        fileName: `application-toInternship-${internship?.id}-fromStudent-${student?.id}-${Date.now()}-cv-${file.name}`,
-      });
-  
+
+      const publicUrl = await uploadFile(file);
+
       return publicUrl;
     } catch (error: any) {
       if (error.message === "No internet connection") {
-        toast.error("No internet connection. Please check your connection and try again.");
+        toast.error(
+          "No internet connection. Please check your connection and try again.",
+        );
       } else if (error.message?.includes("Network Error")) {
-        toast.error("Network error occurred. Please check your connection and try again.");
+        toast.error(
+          "Network error occurred. Please check your connection and try again.",
+        );
       } else if (error.message?.includes("timeout")) {
-        toast.error("Request timed out. Please check your connection and try again.");
+        toast.error(
+          "Request timed out. Please check your connection and try again.",
+        );
       } else {
         toast.error("Failed to upload CV: " + error.message);
       }
@@ -151,22 +145,31 @@ export default function page() {
 
   const uploadMotivationLetter = async (file: File) => {
     try {
-      // Upload motivation letter to Supabase
-      const publicUrl = await uploadFileToSupabase(file, {
-        bucketName: "images",
-        fileName: `application-toInternship-${internship?.id}-fromStudent-${
-          student?.id
-        }-${Date.now()}-motivation-letter-${motivationLetter?.name}`,
-      });
+      const publicUrl = await uploadFile(file);
       return publicUrl;
     } catch (error) {
-      console.error("Error uploading motivation letter:", error);
       toast.error("Failed to upload motivation letter:" + error);
       return null;
     }
   };
 
   const handleConfirm = async () => {
+    if (isApplying) return;
+    if (!applicationCheckComplete || applicationCheckFailed || isApplied)
+      return;
+    const appliedAlready = await isAppliedInternship(id as string, student.id);
+    if (appliedAlready === null) {
+      toast.error(
+        "Could not verify your application status. Please try again.",
+      );
+      return;
+    }
+    if (appliedAlready) {
+      setIsApplied(true);
+      setShowApplication(false);
+      toast.error("You have already applied to this internship");
+      return;
+    }
     if (!cv) {
       toast.error("Please upload a CV");
       return;
@@ -175,28 +178,35 @@ export default function page() {
       toast.error("Please upload a motivation letter");
       return;
     }
-    const cvUrl = (await uploadCV(cv as File)) as string;
+    setIsApplying(true);
+    try {
+      const cvUrl = await uploadCV(cv);
+      if (!cvUrl) return;
 
-    const motivationLetterUrl =
-      motivationLetter &&
-      (await uploadMotivationLetter(motivationLetter as File));
+      const motivationLetterUrl = motivationLetter
+        ? await uploadMotivationLetter(motivationLetter)
+        : null;
+      if (motivationLetter && !motivationLetterUrl) return;
 
-    console.log("internship id : ", internship.id);
-
-    applyToInternship({
-      internshipId: internship?.id as string,
-      status: ApplicationStatus.PENDING,
-      motivationLetter: motivationLetterUrl as string,
-      cv: cvUrl,
-    });
-
-    setShowApplication(false);
+      const applied = await applyToInternship({
+        internshipId: internship?.id as string,
+        status: ApplicationStatus.PENDING,
+        motivationLetter: motivationLetterUrl || "",
+        cv: cvUrl,
+      });
+      if (applied) {
+        setIsApplied(true);
+        setShowApplication(false);
+      }
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   return (
     <main>
-      <div className="py-8 mb-8 px-14 w-[100%] rounded-md flex gap-4">
-        <div className="flex flex-col w-[70%] bg-white p-6 rounded-md">
+      <div className="py-8 mb-8 px-14 w-full rounded-md flex md:flex-row flex-col gap-4">
+        <div className="flex flex-col md:w-[70%] w-full bg-white p-6 rounded-md">
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -211,15 +221,24 @@ export default function page() {
                 </div>
 
                 <div>
-                  <p
-                    className="font-bold text-xl cursor-pointer"
-                    onClick={() =>
-                      internship?.company?.name &&
-                      router.push(`/profile/company/${internship?.company?.id}`)
-                    }
-                  >
-                    {internship?.company?.name || "Not set"}
-                  </p>
+                  {internship?.company?.id ? (
+                    <button
+                      type="button"
+                      className="font-bold text-xl cursor-pointer hover:underline text-left"
+                      onClick={() =>
+                        router.push(
+                          `/profile/company/${internship?.company?.id}`,
+                        )
+                      }
+                      aria-label={`View ${internship.company.name || "company"} profile`}
+                    >
+                      {internship?.company?.name || "Not set"}
+                    </button>
+                  ) : (
+                    <p className="font-bold text-xl">
+                      {internship?.company?.name || "Not set"}
+                    </p>
+                  )}
                   <p className="text-lg">Recruiter</p>
                 </div>
               </div>
@@ -246,21 +265,27 @@ export default function page() {
                 <span className="text-lg">Salary</span>
 
                 <span>
-                  <span className="font-bold text-nowrap">
-                    {formatMoney(internship?.salary ?? 0)} MAD
-                  </span>
-                  <span className="font-medium text-gray-500 text-base">
-                    /
-                    {internship?.salaryType
-                      ? `${
-                          internship?.salaryType === SalaryType.YEAR
-                            ? "per year"
-                            : internship?.salaryType === SalaryType.MONTH
-                            ? "per month"
-                            : "per hour"
-                        }`
-                      : ""}
-                  </span>
+                  {!internship.paid ? (
+                    <span className="font-bold text-nowrap">Unpaid</span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-nowrap">
+                        {formatMoney(internship?.salary ?? 0)} MAD
+                      </span>
+                      <span className="font-medium text-gray-500 text-base">
+                        /
+                        {internship?.salaryType
+                          ? `${
+                              internship?.salaryType === SalaryType.YEAR
+                                ? "per year"
+                                : internship?.salaryType === SalaryType.MONTH
+                                  ? "per month"
+                                  : "per hour"
+                            }`
+                          : ""}
+                      </span>
+                    </>
+                  )}
                 </span>
               </p>
 
@@ -293,17 +318,23 @@ export default function page() {
           />
         </div>
 
-        <div className="w-[30%] flex flex-col gap-4">
+        <div className="md:w-[30%] w-full flex flex-col gap-4">
           {currentUser?.role === Role.STUDENT && (
             <button
-              className={`text-white rounded-xl py-4 cursor-pointer ${
+              disabled={
+                !applicationCheckComplete ||
+                applicationCheckFailed ||
+                isApplied ||
+                isApplying
+              }
+              className={`text-white rounded-xl py-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
                 isApplied
                   ? "bg-green-500 hover:bg-green-600"
                   : "bg-primary hover:bg-primary-hover"
               }`}
               onClick={() => {
                 // if (isAuthenticated) {
-                if (!isApplied) {
+                if (applicationCheckComplete && !isApplied) {
                   // applyToInternship(internship.id);
                   setShowApplication(true);
                   // setIsApplied(true);
@@ -315,7 +346,13 @@ export default function page() {
                 // }
               }}
             >
-              {isApplied ? "Applied" : "Apply Now"}
+              {isApplied
+                ? "Applied"
+                : applicationCheckFailed
+                  ? "Try again later"
+                  : applicationCheckComplete
+                    ? "Apply Now"
+                    : "Checking application…"}
             </button>
           )}
           <div className="flex flex-col gap-2 rounded-xl border-b-2 border-primary">
@@ -344,10 +381,7 @@ export default function page() {
 
           <div className="p-6 flex flex-col gap-2 bg-white shadow-md border-b-2 border-primary rounded-xl">
             <h3 className="text-lg font-semibold">Skills</h3>
-            <p>
-              This is a full-time position. The successful candidate will be
-              responsible for the following:
-            </p>
+            <p>Required skills for this internship position.</p>
 
             <div className="flex flex-wrap gap-4">
               {internship?.skills?.map((skill: string, index: number) => (
@@ -362,6 +396,7 @@ export default function page() {
           </div>
         </div>
       </div>
+
       {showApplication && (
         <EditModal
           isOpenModal={showApplication}
@@ -399,6 +434,7 @@ export default function page() {
           cancelButtonClassName="bg-gray-200 text-black hover:bg-gray-300"
           onCancel={() => setShowApplication(false)}
           confirmButton="Make your application"
+          confirmButtonDisabled={isApplying}
           confirmButtonClassName="bg-primary text-white hover:bg-primary-hover"
           onConfirm={handleConfirm}
           body={

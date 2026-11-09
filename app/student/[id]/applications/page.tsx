@@ -2,11 +2,12 @@
 import React, { useEffect } from "react";
 import { useInternship } from "@/context/internshipContext";
 import { useParams, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import CompanyApplications from "@/components/Applications/CompanyApplications";
 import { useUser } from "@/context/userContext";
 import StudentApplications from "@/components/Applications/StudentApplications";
 
-const Page = () => {
+const StudentApplicationsPageContent = () => {
   const { getStudentApplications } = useInternship();
   const { setStudent, getStudent } = useUser();
   const params = useParams();
@@ -31,5 +32,11 @@ const Page = () => {
 
   return <StudentApplications internshipTitle={internshipTitle || undefined} />;
 };
+
+const Page = () => (
+  <Suspense fallback={<div className="p-8 text-center">Loading applications...</div>}>
+    <StudentApplicationsPageContent />
+  </Suspense>
+);
 
 export default Page;

@@ -1,5 +1,11 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import toast from "react-hot-toast";
 import { useUser } from "./userContext";
 import {
@@ -12,7 +18,11 @@ import {
   WorkMode,
 } from "@/types/types";
 import axios from "@/lib/axios";
-import { RequestWithAuth as fetchWithAuth, getValidToken, RequestWithAuth } from "@/utils/auth";
+import {
+  RequestWithAuth as fetchWithAuth,
+  getValidToken,
+  RequestWithAuth,
+} from "@/utils/auth";
 import { useRouter } from "next/navigation";
 
 interface InternshipContextType {
@@ -28,19 +38,32 @@ interface InternshipContextType {
   countCompanyApplications: (companyId: string) => Promise<number>;
   countCompanyApplicationsWithStatus: (
     companyId: string,
-    status: ApplicationStatus
+    status: ApplicationStatus,
   ) => Promise<number>;
-  createInternship: () => void;
+  createInternship: () => Promise<boolean>;
   getAllInternships: () => void;
-  isApplied: (internshipId: string, studentId: string) => Promise<boolean>;
+  isApplied: (
+    internshipId: string,
+    studentId: string,
+  ) => Promise<boolean | null>;
   searchInternships: (filters: any) => void;
   updateInternship: (internshipId: string) => void;
   getInternshipById: (id: string) => Promise<Internship | null>;
   getCompanyInternships: (id: string) => Promise<Internship[]>;
   likeInternship: (internshipId: string) => void;
-  applyToInternship: (application: ApplicationRequest) => void;
-  acceptApplication: (applicationId: string, message: string, subject: string, attachments: File[]) => Promise<void>;
-  rejectApplication: (applicationId: string, message: string, subject: string, attachments: File[]) => Promise<void>;
+  applyToInternship: (application: ApplicationRequest) => Promise<boolean>;
+  acceptApplication: (
+    applicationId: string,
+    message: string,
+    subject: string,
+    attachments: File[],
+  ) => Promise<void>;
+  rejectApplication: (
+    applicationId: string,
+    message: string,
+    subject: string,
+    attachments: File[],
+  ) => Promise<void>;
   handleSearchChange: (searchName: string, value: string) => void;
   resetInternshipForm: () => void;
   closeInternship: (internshipId: string) => Promise<Internship | null>;
@@ -54,29 +77,44 @@ export interface Location {
   address: string;
 }
 
+const createEmptyInternship = (): Internship =>
+  ({
+    id: "",
+    title: "",
+    location: "",
+    likes: [],
+    applicants: [],
+    city: "",
+    closed: false,
+    createdAt: new Date(),
+    description: "",
+    duration: 0,
+    motivationLetterRequired: false,
+    negotiable: false,
+    paid: false,
+    tags: [],
+    skills: [],
+    salary: 0,
+    salaryType: SalaryType.MONTH,
+    workMode: WorkMode.REMOTE,
+  }) as Internship;
+
 const InternshipContext = createContext<InternshipContextType | null>(null);
 
 export const InternshipContextProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(false);
-  const [internship, setInternship] = useState<Internship>({
-    motivationLetterRequired: false,
-    negotiable: false,
-    paid: false,
-    tags: [] as string[],
-    skills: [] as string[],
-    salary: 0,
-    salaryType: SalaryType.MONTH,
-    workMode: WorkMode.REMOTE,
-  } as Internship);
+  const [internship, setInternship] = useState<Internship>(
+    createEmptyInternship,
+  );
   const [internships, setInternships] = useState<Internship[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
 
-  // get the user contextundefined
+  // get the user context
   const router = useRouter();
 
-  const createInternship = async () => {
+  const createInternship = async (): Promise<boolean> => {
     try {
       setLoading(true);
       const response = await fetchWithAuth(`/internships`, {
@@ -86,12 +124,15 @@ export const InternshipContextProvider: React.FC<{
       if (response) {
         toast.success("Internship created successfully");
         router.push("/internships");
+        return true;
       } else {
         toast.error("Failed to create internship");
+        return false;
       }
     } catch (error) {
       console.error("Error creating internship", error);
       toast.error("Ooops! Something went wrong");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -113,7 +154,7 @@ export const InternshipContextProvider: React.FC<{
     if (!companyId) return [];
     try {
       setLoading(true);
-      const res = await fetchWithAuth(`internships/company/${companyId}`);
+      const res = await fetchWithAuth(`/internships/company/${companyId}`);
       return res || [];
     } catch (error) {
       console.error("Error getting user internships", error);
@@ -124,18 +165,18 @@ export const InternshipContextProvider: React.FC<{
   };
 
   const isApplied = async (internshipId: string, studentId: string) => {
-    if (!internshipId || !studentId) return false;
+    if (!internshipId || !studentId) return null;
     try {
       const response = await fetchWithAuth(
-        `/applications/internship/${internshipId}/student/${studentId}`
+        `/applications/internship/${internshipId}/student/${studentId}`,
       );
       return response;
     } catch (error) {
       console.error(
         "Error checking if student is applied to internship",
-        error
+        error,
       );
-      return false;
+      return null;
     }
   };
 
@@ -156,13 +197,17 @@ export const InternshipContextProvider: React.FC<{
     }
   };
 
-  const searchInternships = async (filters: any , size?: number , page?: number) => {
+  const searchInternships = async (
+    filters: any,
+    size?: number,
+    page?: number,
+  ) => {
     console.log(filters);
     setLoading(true);
     try {
       // Build query string
       const query = new URLSearchParams();
-      
+
       // Add title and city filters
       if (filters.title) query.append("title", filters.title);
       if (filters.location) query.append("city", filters.location);
@@ -191,9 +236,7 @@ export const InternshipContextProvider: React.FC<{
       console.log(query.toString());
 
       // Send the request
-      const res = await fetchWithAuth(
-        `internships/search?${query.toString()}`
-      );
+      const res = await fetchWithAuth(`internships/search?${query.toString()}`);
 
       console.log(res.content);
 
@@ -238,7 +281,9 @@ export const InternshipContextProvider: React.FC<{
   };
 
   // apply to a internship
-  const applyToInternship = async (application: ApplicationRequest) => {
+  const applyToInternship = async (
+    application: ApplicationRequest,
+  ): Promise<boolean> => {
     try {
       const response = await fetchWithAuth(`/applications`, {
         method: "POST",
@@ -248,11 +293,13 @@ export const InternshipContextProvider: React.FC<{
       });
       if (!response) {
         toast.error("Failed to apply to internship");
-        return;
+        return false;
       }
       toast.success("Applied to internship successfully");
+      return true;
     } catch (error) {
       toast.error("Error applying to internship");
+      return false;
     }
   };
 
@@ -260,7 +307,7 @@ export const InternshipContextProvider: React.FC<{
     applicationId: string,
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     setLoading(true);
     const token = getValidToken();
@@ -298,7 +345,7 @@ export const InternshipContextProvider: React.FC<{
     applicationId: string,
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     setLoading(true);
     const token = getValidToken();
@@ -333,9 +380,9 @@ export const InternshipContextProvider: React.FC<{
   };
 
   // reset Internship Form for post-internship page
-  const resetInternshipForm = () => {
-    setInternship({} as Internship);
-  };
+  const resetInternshipForm = useCallback(() => {
+    setInternship(createEmptyInternship());
+  }, []);
 
   //
   const handleSearchChange = (searchName: string, value: string) => {
@@ -346,7 +393,7 @@ export const InternshipContextProvider: React.FC<{
     try {
       setLoading(true);
       const response = await fetchWithAuth(
-        `/applications/company/${companyId}`
+        `/applications/company/${companyId}`,
       );
       setApplications(response);
     } catch (error) {
@@ -361,7 +408,7 @@ export const InternshipContextProvider: React.FC<{
     try {
       setLoading(true);
       const response = await fetchWithAuth(
-        `/applications/student/${studentId}`
+        `/applications/student/${studentId}`,
       );
       setApplications(response);
     } catch (error) {
@@ -378,7 +425,7 @@ export const InternshipContextProvider: React.FC<{
       setLoading(true);
       if (!internshipId) return 0;
       const response = await fetchWithAuth(
-        `/applications/count/internship/${internshipId}`
+        `/applications/count/internship/${internshipId}`,
       );
       return response;
     } catch (error) {
@@ -393,7 +440,7 @@ export const InternshipContextProvider: React.FC<{
     try {
       setLoading(true);
       const response = await fetchWithAuth(
-        `/applications/company/${companyId}/count`
+        `/applications/company/${companyId}/count`,
       );
       return response;
     } catch (error) {
@@ -406,15 +453,15 @@ export const InternshipContextProvider: React.FC<{
 
   const countCompanyApplicationsWithStatus = async (
     companyId: string,
-    status: ApplicationStatus
+    status: ApplicationStatus,
   ) => {
     console.log(
-      `url is : /applications/${companyId}/count/status?status=${status}`
+      `url is : /applications/${companyId}/count/status?status=${status}`,
     );
     try {
       setLoading(true);
       const response = await fetchWithAuth(
-        `/applications/${companyId}/count/status?status=${status}`
+        `/applications/${companyId}/count/status?status=${status}`,
       );
       return response;
     } catch (error) {
@@ -428,8 +475,10 @@ export const InternshipContextProvider: React.FC<{
   const closeInternship = async (internshipId: string) => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`/internships/${internshipId}/close`);
-      
+      const res = await fetchWithAuth(`/internships/${internshipId}/close`, {
+        method: "PUT",
+      });
+
       if (res) {
         toast.success(`Internship closed successfully`);
         return res;
@@ -448,8 +497,10 @@ export const InternshipContextProvider: React.FC<{
   const openInternship = async (internshipId: string) => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`/internships/${internshipId}/close`);
-      
+      const res = await fetchWithAuth(`/internships/${internshipId}/open`, {
+        method: "PUT",
+      });
+
       if (res) {
         toast.success(`Internship opened successfully`);
         return res;
@@ -518,7 +569,7 @@ export const InternshipContextProvider: React.FC<{
         resetInternshipForm,
         closeInternship,
         openInternship,
-        deleteInternship
+        deleteInternship,
       }}
     >
       {children}
@@ -530,7 +581,7 @@ export const useInternship = (): InternshipContextType => {
   const context = useContext(InternshipContext);
   if (!context)
     throw new Error(
-      "useInternship must be used within an InternshipContextProvider"
+      "useInternship must be used within an InternshipContextProvider",
     );
   return context;
 };

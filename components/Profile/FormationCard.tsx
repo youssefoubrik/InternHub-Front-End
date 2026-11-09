@@ -5,6 +5,7 @@ import { Formation, Role } from "@/types/types";
 import { useUser } from "@/context/userContext";
 import { useAuth } from "@/context/authContext";
 import FormationInfos from "./FormationInfos";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 const FormationCard = () => {
   // const initialFormations : Formation[] = [
@@ -36,6 +37,7 @@ const FormationCard = () => {
   const { currentUser } = useAuth();
   const [formations, setFormations] = useState<Formation[]>([]);
   const [wantToAdd, setWantToAdd] = useState<boolean>(false);
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
 
   useEffect(() => {
     if (student?.formations) {
@@ -51,7 +53,7 @@ const FormationCard = () => {
       <div className="px-4 space-y-4">
         {formations.length === 0 && !isUserProfile && (
           <div className="col-span-4 text-center">
-            <p className="text-lg text-gray-600">No Formations found.</p>
+            <p className="text-lg text-gray-600">No Education found.</p>
           </div>
         )}
         {formations.map((formation, index) => (
@@ -72,7 +74,9 @@ const FormationCard = () => {
               FLAG="NEW"
             />
           ) : (
-            <PlusButton onClick={() => setWantToAdd(true)} />
+            <PlusButton onClick={() => {
+              if (acquireEditor("formation-new")) setWantToAdd(true);
+            }} />
           ))}
       </div>
     </div>

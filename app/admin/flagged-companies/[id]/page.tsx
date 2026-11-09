@@ -125,8 +125,8 @@ export default function Page() {
     if (success) {
       setFlags((currentFlags) =>
         currentFlags.map((flag) =>
-          flag.id === flagId ? { ...flag, reportStatus: "RESOLVED" } : flag
-        )
+          flag.id === flagId ? { ...flag, reportStatus: "RESOLVED" } : flag,
+        ),
       );
       setIsResolveFlagDialogOpen(false);
       setUnresolvedCount((prev) => prev - 1);
@@ -137,7 +137,7 @@ export default function Page() {
   const handleWarnCompany = async (
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     if (!selectedFlag) return;
 
@@ -145,15 +145,15 @@ export default function Page() {
       selectedFlag.id,
       message,
       subject,
-      attachments
+      attachments,
     );
     if (success) {
       setFlags((currentFlags) =>
         currentFlags.map((flag) =>
           flag.id === selectedFlag.id
             ? { ...flag, reportStatus: "WARNED" }
-            : flag
-        )
+            : flag,
+        ),
       );
       setIsWarnCompanyDialogOpen(false);
       setUnresolvedCount((prev) => prev - 1);
@@ -164,12 +164,12 @@ export default function Page() {
   const handleBlockCompany = async (
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     const success = await blockCompany(id, message, subject, attachments);
     if (success) {
       setCompany((prev) =>
-        prev ? { ...prev, blocked: true, blockedAt: new Date() } : null
+        prev ? { ...prev, blocked: true, blockedAt: new Date() } : null,
       );
     }
 
@@ -179,12 +179,12 @@ export default function Page() {
   const handleUnblockCompany = async (
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     const success = await unblockCompany(id, message, subject, attachments);
     if (success) {
       setCompany((prev) =>
-        prev ? { ...prev, blocked: false, blockedAt: null } : null
+        prev ? { ...prev, blocked: false, blockedAt: null } : null,
       );
     }
     setIsUnblockCompanyDialogOpen(false);
@@ -198,7 +198,10 @@ export default function Page() {
       ),
       cell: ({ row }) => (
         <Button variant="link" size="sm" className="text-sm p-0" asChild>
-          <Link href={`/students/${row.original.studentId}`} target="_blank">
+          <Link
+            href={`/profile/student/${row.original.studentId}`}
+            target="_blank"
+          >
             {row.original.studentFirstName} {row.original.studentLastName}
           </Link>
         </Button>
@@ -399,7 +402,7 @@ export default function Page() {
                             ? null
                             : flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                         </TableHead>
                       ))}
@@ -420,7 +423,7 @@ export default function Page() {
                           <TableCell key={cell.id}>
                             {flexRender(
                               cell.column.columnDef.cell,
-                              cell.getContext()
+                              cell.getContext(),
                             )}
                           </TableCell>
                         ))}

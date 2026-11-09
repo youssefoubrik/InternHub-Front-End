@@ -1,18 +1,6 @@
 "use client";
 import FeatureCard from "@/components/Cards/FeatureCard";
 import { Briefcase, Building, Users } from "lucide-react";
-
-export interface HomeStatistics {
-  totalInternshipsCount: number;
-  remoteInternshipsCount: number;
-  onSiteInternshipsCount: number;
-  totalCompaniesCount: number;
-  totalStudentsCount: number;
-  privatePublicSchoolsCount: number; // to be added
-  universitiesCount: number; // to be added
-  totalApplicants: number; // right now
-  totalAcceptedApplicants: number; // right now
-}
 interface WhyChooseClientProps {
   statistics: HomeStatistics;
 }

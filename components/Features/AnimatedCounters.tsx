@@ -1,5 +1,4 @@
 "use client";
-import { HomeStatistics } from "@/app/WhyChooseClient";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
@@ -49,7 +48,7 @@ const CounterItem = ({
   return (
     <motion.div
       ref={ref}
-      className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center text-center"
+      className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center text-center cursor-pointer"
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}

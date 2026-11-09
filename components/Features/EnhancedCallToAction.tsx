@@ -1,36 +1,11 @@
 "use client";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const EnhancedCallToAction = () => {
-  const router = useRouter();
 
   return (
-    <section className="py-28 bg-primary/10 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 z-0">
-        {[...Array(10)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-primary/10"
-            style={{
-              width: Math.random() * 100 + 50,
-              height: Math.random() * 100 + 50,
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-            }}
-            initial={{ scale: 0, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 0.3 }}
-            viewport={{ once: true }}
-            transition={{
-              duration: Math.random() * 1 + 0.5,
-              delay: Math.random() * 0.5,
-              ease: "easeOut",
-            }}
-          />
-        ))}
-      </div>
-
+    <section className="py-28 bg-background overflow-hidden">
       <div className="container mx-auto px-4 relative z-10">
         <motion.div
           className="max-w-4xl mx-auto text-center"
@@ -69,9 +44,8 @@ const EnhancedCallToAction = () => {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              onClick={() => router.push("/signup/student")}
             >
-              Sign up as a Student
+              <Link href="/signup/student">Sign up as a Student</Link>
             </motion.button>
 
             <motion.button
@@ -81,9 +55,8 @@ const EnhancedCallToAction = () => {
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              onClick={() => router.push("/signup/company")}
             >
-              Sign up as a Company
+              <Link href="/signup/company">Sign up as a Company</Link>
             </motion.button>
           </div>
         </motion.div>

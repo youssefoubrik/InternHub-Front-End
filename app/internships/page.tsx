@@ -8,19 +8,13 @@ import { list, table } from "@/utils/Icons";
 import { motion } from "framer-motion";
 import React, { useEffect } from "react";
 
-function page() {
-  const { internships , searchInternships } = useInternship();
+export default function page() {
+  const { internships, searchInternships } = useInternship();
   const { filters } = useFilters();
-  const [columns, setColumns] = React.useState(2);
 
-  const getIcon = (col: number) => {
-    if (col === 2) return table;
-    return list;
-  };
-
-  useEffect(()=>{
+  useEffect(() => {
     searchInternships(filters);
-  },[filters])
+  }, [filters]);
 
   // const filetredJobs =
   //   filters.remote ||
@@ -65,28 +59,21 @@ function page() {
           className="w-full"
         >
           <div
-            className={`grid gap-8
-            ${
-              internships?.length > 0
-                ? columns === 2
-                  ? "grid-cols-3"
-                  : "grid-cols-1"
-                : "w-full"
-            }`}
+            className={`grid gap-4 2xl:grid-cols-4 xl:grid-cols-3 md:grid-cols-2 grid-cols-1`}
           >
             {internships?.length > 0 ? (
               internships?.map((internship: Internship) => (
                 <InternshipItem key={internship?.id} internship={internship} />
               ))
             ) : (
-              <div className="mx-auto flex items-center flex-col">
+              <div className="mx-auto grid col-span-full items-center justify-center">
                 <img
                   src="notFound.png"
                   alt="Not Found"
                   width={"600rem"}
                   height={"600rem"}
                 />
-                <p className="text-3xl font-bold text-[#ff5a31]">
+                <p className="text-xl md:text-3xl font-bold w-full flex justify-center text-[#ff5a31]">
                   No Internships Found!
                 </p>
               </div>
@@ -97,5 +84,3 @@ function page() {
     </main>
   );
 }
-
-export default page;

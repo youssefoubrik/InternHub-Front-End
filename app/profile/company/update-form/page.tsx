@@ -1,66 +1,123 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import CompanyInfosForm from "@/components/Profile/company/update-form/CompanyInfosForm";
 import Button from "@/components/Button";
-import { CompanyLocation } from "@/components/Profile/company/update-form/CompanyLocation";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/userContext";
-import {
-  deleteFileFromSupabase,
-  uploadFileToSupabase,
-} from "@/lib/supabaseStorage";
+import { deleteFile, uploadFile } from "@/lib/storageApi";
 import toast from "react-hot-toast";
 import CompanyUpdateSummary from "@/components/Profile/company/update-form/CompanyUpdateSummary";
 import { useAuth } from "@/context/authContext";
+import { useCompanyProfileDraftStore } from "@/stores/companyProfileDraftStore";
+import {
+  CompanyProfileErrors,
+  CompanyProfileField,
+  normalizeCompanyProfile,
+  validateCompanyProfile,
+} from "@/lib/validation/companyProfile";
+
+const CompanyLocation = dynamic(
+  () => import("@/components/Profile/company/update-form/CompanyLocation").then((module) => module.CompanyLocation),
+  { ssr: false, loading: () => <div className="mt-5 h-[700px] w-full rounded-lg bg-gray-100" /> },
+);
 
 const UpdateCompanyProfile = () => {
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { company, setCompany, updateCompany } = useUser();
+  const { company, updateCompany } = useUser();
   const [step, setStep] = useState(1);
   const [logo, setLogo] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<CompanyProfileErrors>({});
+  const draft = useCompanyProfileDraftStore((state) => state.draft);
+  const setDraft = useCompanyProfileDraftStore((state) => state.setDraft);
+  const resetDraft = useCompanyProfileDraftStore((state) => state.resetDraft);
 
   useEffect(() => {
-    console.log("company good : ", company);
-    Object.keys(company).length === 0 &&
+    if (!company?.id) {
       router.push(`/profile/company/${currentUser?.id}`);
-  }, [company, currentUser]);
-
-  const updateCompanyProfile = async () => {
-    let publicUrl = company?.profilePicture;
-    if (logo) {
-      deleteFileFromSupabase(
-        "images",
-        company?.profilePicture?.split("/").pop() || ""
-      );
-
-      try {
-        // Upload file to Supabase
-        publicUrl = await uploadFileToSupabase(logo, {
-          bucketName: "images",
-          fileName: `profile-picture-${company?.id}-${Date.now()}.${logo.name
-            .split(".")
-            .pop()}`,
-        });
-      } catch (error) {
-        console.error("Error uploading profile picture:", error);
-        toast.error("Failed to upload profile picture:" + error);
-        // Handle error (show toast, alert, etc.)
-      }
+      return;
     }
-    updateCompany({ ...company, profilePicture: publicUrl });
+    if (!draft || draft.id !== company.id) {
+      setDraft({ ...company, location: { ...company.location }, links: { ...company.links } });
+    }
+  }, [company, currentUser, draft, router, setDraft]);
+
+  const clearFieldError = (field: CompanyProfileField) => {
+    setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
-  console.log("new company : ", company);
+  const validateStep = (currentStep: number) => {
+    if (!draft) return false;
+    const normalized = normalizeCompanyProfile(draft);
+    const allErrors = validateCompanyProfile(normalized);
+    const stepFields: CompanyProfileField[] = currentStep === 1
+      ? ["name", "email", "tel", "ice", "description", "links.linkedin", "links.twitter", "links.website"]
+      : ["location"];
+    const stepErrors = Object.fromEntries(
+      stepFields.filter((field) => allErrors[field]).map((field) => [field, allErrors[field]])
+    ) as CompanyProfileErrors;
+    setErrors((current) => {
+      const next = { ...current };
+      stepFields.forEach((field) => delete next[field]);
+      return { ...next, ...stepErrors };
+    });
+    if (Object.keys(stepErrors).length) {
+      toast.error("Please fix the highlighted fields before continuing.");
+      return false;
+    }
+    return true;
+  };
 
-  const nextStep = () => {
+  const updateCompanyProfile = async () => {
+    if (!draft || isSaving) return;
+    const normalized = normalizeCompanyProfile(draft);
+    const nextErrors = validateCompanyProfile(normalized);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      toast.error("Please fix the highlighted fields before saving.");
+      return;
+    }
+
+    setIsSaving(true);
+    let uploadedUrl: string | undefined;
+    try {
+      let publicUrl = normalized.profilePicture;
+      if (logo) {
+        publicUrl = await uploadFile(logo);
+        uploadedUrl = publicUrl;
+      }
+      const saved = await updateCompany({ ...normalized, profilePicture: publicUrl });
+      if (!saved) {
+        if (uploadedUrl) await deleteFile(uploadedUrl).catch(() => undefined);
+        return;
+      }
+
+      if (logo && company.profilePicture) {
+        try {
+          await deleteFile(company.profilePicture);
+        } catch (error) {
+          console.error("Company was updated, but the old logo could not be deleted", error);
+        }
+      }
+      resetDraft();
+      router.push(`/profile/company/${company.id}`);
+    } catch (error) {
+      toast.error("Failed to update company: " + error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const nextStep = async () => {
+    if (!validateStep(step)) return;
     if (step < 3) {
       setStep(step + 1);
     }
     if (step === 3) {
-      updateCompanyProfile();
-      router.push(`/profile/company/${company.id}`);
+      await updateCompanyProfile();
     }
   };
 
@@ -76,11 +133,11 @@ const UpdateCompanyProfile = () => {
             <h2 className="text-xl font-bold mb-4">
               Update Company Information
             </h2>
-            <CompanyInfosForm logo={logo} setLogo={setLogo} />
+            <CompanyInfosForm logo={logo} setLogo={setLogo} errors={errors} onFieldChange={clearFieldError} />
             <div className="w-full flex justify-end">
               <Button
                 label="Next"
-                onClick={nextStep}
+                onClick={() => void nextStep()}
                 className="mt-4 px-4 py-2 rounded"
               />
             </div>
@@ -91,6 +148,7 @@ const UpdateCompanyProfile = () => {
           <div>
             <h2 className="text-xl font-bold">Update Company Location</h2>
             <CompanyLocation />
+            {errors.location && <p className="mt-2 text-sm text-red-600" role="alert">{errors.location}</p>}
             <div className="mt-4 flex justify-between">
               <Button
                 label="Previous"
@@ -100,7 +158,7 @@ const UpdateCompanyProfile = () => {
               />
               <Button
                 label="Next"
-                onClick={nextStep}
+                onClick={() => void nextStep()}
                 className="px-4 py-2 rounded"
               />
             </div>
@@ -121,7 +179,8 @@ const UpdateCompanyProfile = () => {
               />
               <Button
                 label="Update"
-                onClick={nextStep}
+                onClick={() => void nextStep()}
+                disabled={isSaving}
                 className="px-4 py-2 rounded"
               />
             </div>

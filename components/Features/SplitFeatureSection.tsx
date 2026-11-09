@@ -3,9 +3,11 @@ import { motion } from "framer-motion";
 import { ReactNode, useRef } from "react";
 import { useInView } from "framer-motion";
 import { CheckCircleIcon } from "lucide-react";
-import Button from "../Button";
-import { useRouter } from "next/navigation";
 import "@/styles/inclined-line.css";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+const MotionLink = motion(Link);
 
 interface StatisticItemProps {
   value: number;
@@ -117,30 +119,21 @@ const SplitFeatureSection = ({
               {description}
             </motion.p>
             {!noAction && (
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex justify-center"
-              >
-                <Button
-                  label={actionLabel}
-                  onClick={() => router.push(actionLink)}
-                  className="px-5 py-2 text-lg font-bold"
-                />
-              </motion.div>
+              <div className="flex justify-center">
+                <motion.a
+                  href={actionLink}
+                  className="inline-block bg-primary hover:bg-primary-hover text-white font-bold py-3 px-8 rounded-lg transition-colors cursor-pointer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                >
+                  {actionLabel}
+                </motion.a>
+              </div>
             )}
           </motion.div>
-
-          {/* Divider - Inclined vertical line */}
-          {/* <div className="md:block relative mx-6 h-80">
-            <motion.div
-              className="inclined-line w-[2px] absolute top-0 left-1/2 -translate-x-1/2"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7 }}
-            />
-          </div> */}
 
           {/* Right side - Statistics (without card) */}
           <motion.div

@@ -1,5 +1,4 @@
 "use client";
-import { HomeStatistics } from "@/app/WhyChooseClient";
 import SplitFeatureSection from "./SplitFeatureSection";
 import { Briefcase, Building, Users } from "lucide-react";
 import { motion } from "framer-motion";
@@ -156,7 +155,7 @@ const FeatureSections = ({ statistics }: FeatureSectionsProps) => {
         noAction={true}
       />
 
-      {/* <InfinitePartnerSlider /> */}
+      <InfinitePartnerSlider />
 
       <SplitFeatureSection
         title={featureSections[2].title}

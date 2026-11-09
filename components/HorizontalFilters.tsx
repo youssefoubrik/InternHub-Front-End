@@ -83,10 +83,10 @@ function HorizontalFilters() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full bg-white/70 rounded-lg text-black h-28 divide-x-4 divide-primary p-4 flex items-center justify-between"
+        className="w-full bg-white/70 rounded-lg text-black divide-y-2 divide-primary p-3 grid grid-cols-1 md:grid-cols-2 items-stretch lg:grid-cols-5 lg:h-28 lg:items-center lg:divide-y-0 lg:divide-x-4 lg:p-4"
       >
         {/* Search Field */}
-        <div className="flex items-center gap-2 pl-4 py-2 text-black relative w-full">
+        <div className="relative flex col-span-1 md:col-span-2 lg:col-span-1 min-w-0 w-full items-center gap-2 py-2 text-black pl-4">
           <Search className="h-5 w-5 text-primary z-50 absolute ml-2" />
           <InputField
             type="text"
@@ -99,8 +99,11 @@ function HorizontalFilters() {
 
         {/* Location Filter */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="w-full flex justify-center">
-            <button className="flex items-center gap-2 px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
+          <DropdownMenuTrigger
+            asChild
+            className="w-full flex flex-1 justify-center"
+          >
+            <button className="flex w-full items-center justify-center gap-2 whitespace-nowrap px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
               <MapPin className="h-5 w-5 text-primary" />
               <span>{getLocationText()}</span>
               <ChevronDown className="h-4 w-4 opacity-50" />
@@ -157,8 +160,11 @@ function HorizontalFilters() {
 
         {/* Internship Type Filter */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="w-full flex justify-center">
-            <button className="flex items-center gap-2 px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
+          <DropdownMenuTrigger
+            asChild
+            className="w-full flex flex-1 justify-center"
+          >
+            <button className="flex w-full items-center justify-center gap-2 whitespace-nowrap px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
               <Briefcase className="h-5 w-5 text-primary" />
               <span>{getExperienceText()}</span>
               <ChevronDown className="h-4 w-4 opacity-50" />
@@ -215,8 +221,11 @@ function HorizontalFilters() {
 
         {/* Work Mode Filter */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="w-full flex justify-center">
-            <button className="flex items-center gap-2 px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
+          <DropdownMenuTrigger
+            asChild
+            className="w-full flex flex-1 justify-center"
+          >
+            <button className="flex w-full items-center justify-center gap-2 whitespace-nowrap px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
               <Clock className="h-5 w-5 text-primary" />
               <span>{getJobTypeText()}</span>
               <ChevronDown className="h-4 w-4 opacity-50" />
@@ -273,8 +282,11 @@ function HorizontalFilters() {
 
         {/* Paid Filter */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="w-full flex justify-center">
-            <button className="flex items-center gap-2 px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
+          <DropdownMenuTrigger
+            asChild
+            className="w-full flex flex-1 justify-center"
+          >
+            <button className="flex w-full items-center justify-center gap-2 whitespace-nowrap px-4 py-2 text-black hover:text-primary transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 border-none">
               <DollarSign className="h-5 w-5 text-primary" />
               <span>{getPaidText()}</span>
               <ChevronDown className="h-4 w-4 opacity-50" />

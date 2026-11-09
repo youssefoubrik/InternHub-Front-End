@@ -42,7 +42,7 @@ export function SearchableCombobox({
 
   // Filter options based on search input (search companyName)
   const filteredOptions = options?.filter((option) =>
-    option.name.toLowerCase().includes(search.toLowerCase())
+    option.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   React.useEffect(() => {
@@ -55,9 +55,6 @@ export function SearchableCombobox({
     setSelectedOption(selectedOption?.name || defaultValue);
   }, [value, options]);
 
-  console.log("selectedOption : ", selectedOption);
-  console.log("defaultValue : ", defaultValue);
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -67,8 +64,8 @@ export function SearchableCombobox({
           aria-expanded={open}
           className={cx(
             selectedOption ? "text-black" : "text-muted-foreground",
-            "w-full max-w-96 justify-between font-medium text-sm focus:ring-1 focus:ring-primary rounded-md",
-            classNameButton
+            "w-full md:max-w-96 justify-between font-medium text-sm focus:ring-1 focus:ring-primary rounded-md",
+            classNameButton,
           )}
         >
           <span className="truncate">
@@ -114,7 +111,7 @@ export function SearchableCombobox({
                   <Check
                     className={cn(
                       "h-4 w-4 flex-shrink-0",
-                      value === option.name ? "opacity-100" : "opacity-0"
+                      value === option.name ? "opacity-100" : "opacity-0",
                     )}
                   />
                   <div className="flex flex-col gap-2 flex-1">

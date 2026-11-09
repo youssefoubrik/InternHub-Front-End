@@ -23,6 +23,7 @@ import {
   
   export const StudentApplicationsColumns: ColumnDef<Application>[] = [
     {
+      id: "internshipTitle",
       accessorFn: (row) => row.internshipResponse.title,
       header: "Internship",
       cell: ({ row }) => row.original.internshipResponse.title,

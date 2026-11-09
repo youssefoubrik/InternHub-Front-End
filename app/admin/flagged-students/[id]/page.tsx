@@ -122,8 +122,8 @@ export default function Page() {
     if (success) {
       setFlags((currentFlags) =>
         currentFlags.map((flag) =>
-          flag.id === flagId ? { ...flag, reportStatus: "RESOLVED" } : flag
-        )
+          flag.id === flagId ? { ...flag, reportStatus: "RESOLVED" } : flag,
+        ),
       );
       setIsIgnoreFlagDialogOpen(false);
       setUnresolvedCount((prev) => prev - 1);
@@ -134,7 +134,7 @@ export default function Page() {
   const handleWarnStudent = async (
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     if (!selectedFlag) return;
 
@@ -142,15 +142,15 @@ export default function Page() {
       selectedFlag.id,
       message,
       subject,
-      attachments
+      attachments,
     );
     if (success) {
       setFlags((currentFlags) =>
         currentFlags.map((flag) =>
           flag.id === selectedFlag.id
             ? { ...flag, reportStatus: "WARNED" }
-            : flag
-        )
+            : flag,
+        ),
       );
       setIsWarnStudentDialogOpen(false);
       setUnresolvedCount((prev) => prev - 1);
@@ -161,7 +161,7 @@ export default function Page() {
   const handleBlockStudent = async (
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     const success = await blockStudent(id, message, subject, attachments);
     if (success) {
@@ -173,12 +173,12 @@ export default function Page() {
   const handleUnblockStudent = async (
     message: string,
     subject: string,
-    attachments: File[]
+    attachments: File[],
   ) => {
     const success = await unblockStudent(id, message, subject, attachments);
     if (success) {
       setStudent((prev) =>
-        prev ? { ...prev, blocked: false, blockedAt: null } : null
+        prev ? { ...prev, blocked: false, blockedAt: null } : null,
       );
     }
     setIsUnblockStudentDialogOpen(false);
@@ -192,7 +192,10 @@ export default function Page() {
       ),
       cell: ({ row }) => (
         <Button variant="link" size="sm" className="text-sm p-0" asChild>
-          <Link href={`/companies/${row.original.companyId}`} target="_blank">
+          <Link
+            href={`/profile/company/${row.original.companyId}`}
+            target="_blank"
+          >
             {row.original.companyName}
           </Link>
         </Button>
@@ -397,7 +400,7 @@ export default function Page() {
                             ? null
                             : flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                         </TableHead>
                       ))}
@@ -418,7 +421,7 @@ export default function Page() {
                           <TableCell key={cell.id}>
                             {flexRender(
                               cell.column.columnDef.cell,
-                              cell.getContext()
+                              cell.getContext(),
                             )}
                           </TableCell>
                         ))}

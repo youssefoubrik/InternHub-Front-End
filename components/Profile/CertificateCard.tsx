@@ -1,35 +1,29 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PlusButton from "../PlusButton";
 import CertificatContent from "./CertificatContent";
-import { Certificat, Role } from "@/types/types";
+import { Certificat } from "@/types/types";
 import EditModal from "./EditModal";
 import CertificatInfos from "./CertificatInfos";
 import toast from "react-hot-toast";
 import { useUser } from "@/context/userContext";
-import { useAuth } from "@/context/authContext";
-import { uploadFileToSupabase } from "@/lib/supabaseStorage";
+import { uploadFile } from "@/lib/storageApi";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 const CertificateCard = () => {
   const [file, setFile] = useState<File | null>(null);
   const { student, createCertificat, updateCertificat, isUserProfile } =
     useUser();
-  const { currentUser } = useAuth();
   const [certificats, setCertificats] = useState<Certificat[]>([]);
   const [isOpenModal, setIsOpenModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const isCreatingRef = useRef(false);
   const [newCertificat, setNewCertificat] = useState<Certificat>(
-    {} as Certificat
+    {} as Certificat,
   );
-
-  const handleCertificatUpdate = (updatedCertificat: Certificat) => {
-    if (!isUserProfile) return;
-    updateCertificat(updatedCertificat);
-    setCertificats((prevCertificats) =>
-      prevCertificats.map((certificat) =>
-        certificat.id === updatedCertificat.id ? updatedCertificat : certificat
-      )
-    );
-  };
+  const editorId = "certificate-new";
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
+  const releaseEditor = useProfileEditLockStore((state) => state.release);
 
   const handleCancel = () => {
     setNewCertificat({
@@ -38,11 +32,13 @@ const CertificateCard = () => {
       thumbnail: "",
       date: "",
     });
+    setFile(null);
     setIsOpenModal(false);
+    releaseEditor(editorId);
   };
 
   const handleConfirm = async () => {
-    if (!isUserProfile) return;
+    if (!isUserProfile || isCreatingRef.current) return;
     if (!newCertificat.title) {
       toast.error("Please enter a certificat title");
       return;
@@ -58,32 +54,32 @@ const CertificateCard = () => {
       return;
     }
 
+    // A ref locks synchronously so multiple clicks before React rerenders
+    // cannot start multiple uploads/creation requests.
+    isCreatingRef.current = true;
+    setIsCreating(true);
     try {
-      const publicUrl = await uploadFileToSupabase(file as File, {
-        bucketName: "images",
-        fileName: `certificate-${newCertificat.title}-${
-          student?.id
-        }-${Date.now()}.${newCertificat.thumbnail.split(".").pop()}`,
-      });
+      const publicUrl = await uploadFile(file);
       const result = await createCertificat({
         ...newCertificat,
         thumbnail: publicUrl,
       });
-      if (!result) toast.error("Failed to create certificate");
+      if (!result) {
+        toast.error("Failed to create certificate");
+        return;
+      }
       toast.success("Certificate created successfully");
-      setCertificats((prev: Certificat[]) => [...prev, result]);
+      setCertificats((prev) => [...prev, result]);
+      setIsOpenModal(false);
+      releaseEditor(editorId);
+      setNewCertificat({ id: "", title: "", thumbnail: "", date: "" });
+      setFile(null);
     } catch (error) {
       toast.error("Failed to create certificate : " + error);
     } finally {
-      window.location.reload();
+      isCreatingRef.current = false;
+      setIsCreating(false);
     }
-    setIsOpenModal(false);
-    setNewCertificat({
-      id: "",
-      title: "",
-      thumbnail: "",
-      date: "",
-    });
   };
 
   useEffect(() => {
@@ -112,7 +108,12 @@ const CertificateCard = () => {
           </div>
         )}
         {isUserProfile && (
-          <div className="w-1/2 h-full" onClick={() => setIsOpenModal(true)}>
+          <div
+            className="w-1/2 h-full"
+            onClick={() => {
+              if (acquireEditor(editorId)) setIsOpenModal(true);
+            }}
+          >
             <PlusButton className="w-full h-full" />
           </div>
         )}
@@ -121,7 +122,10 @@ const CertificateCard = () => {
       {isUserProfile && (
         <EditModal
           isOpenModal={isOpenModal}
-          setIsOpenModal={setIsOpenModal}
+          setIsOpenModal={(open) => {
+            if (!open) releaseEditor(editorId);
+            setIsOpenModal(open);
+          }}
           className="bg-white max-w-xl min-h-[60vh] flex flex-col"
           title="Add New Certificate"
           titleClassName="text-2xl font-medium"
@@ -129,6 +133,7 @@ const CertificateCard = () => {
           cancelButtonClassName="bg-gray-200 text-black hover:bg-gray-300"
           onCancel={handleCancel}
           confirmButton="Add"
+          confirmButtonDisabled={isCreating}
           confirmButtonClassName="bg-primary w-20 text-white hover:bg-primary-hover"
           onConfirm={handleConfirm}
           body={

@@ -3,7 +3,6 @@ import { Users } from "lucide-react";
 import AnimatedFeatureCard from "./AnimatedFeatureCard";
 import FeatureHeader from "./FeatureHeader";
 import { motion } from "framer-motion";
-import { HomeStatistics } from "@/app/WhyChooseClient";
 
 interface TalentedStudentsProps {
   statistics: HomeStatistics;

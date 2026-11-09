@@ -13,5 +13,9 @@ export const BlockedUserCheck = ({ children }: BlockedUserCheckProps) => {
     return <YouAreBlocked />;
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-[calc(100vh-var(--header-height))]">
+      {children}
+    </div>
+  );
 };

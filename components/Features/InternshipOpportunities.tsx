@@ -3,13 +3,14 @@ import { Briefcase } from "lucide-react";
 import AnimatedFeatureCard from "./AnimatedFeatureCard";
 import FeatureHeader from "./FeatureHeader";
 import { motion } from "framer-motion";
-import { HomeStatistics } from "@/app/WhyChooseClient";
 
 interface InternshipOpportunitiesProps {
   statistics: HomeStatistics;
 }
 
-const InternshipOpportunities = ({ statistics }: InternshipOpportunitiesProps) => {
+const InternshipOpportunities = ({
+  statistics,
+}: InternshipOpportunitiesProps) => {
   const featureData = {
     icon: <Briefcase className="w-8 h-8 text-primary" />,
     title: "Diverse Internship Opportunities",
@@ -27,11 +28,11 @@ const InternshipOpportunities = ({ statistics }: InternshipOpportunitiesProps) =
   return (
     <section className="py-20 bg-gradient-to-b from-background to-background-dark">
       <div className="container mx-auto px-4">
-        <FeatureHeader 
+        <FeatureHeader
           title="Find Your Perfect Internship on"
           subtitle="Discover thousands of internship opportunities from leading companies across Morocco"
         />
-        
+
         <motion.div
           className="max-w-3xl mx-auto"
           initial={{ opacity: 0 }}

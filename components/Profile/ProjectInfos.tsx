@@ -22,7 +22,7 @@ const ProjectInfos: React.FC<ProjectInfosProps> = ({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateEditedProject({ ...editedProject, link: e.target.value });
+          updateEditedProject({ ...editedProject, link: e.target.value });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

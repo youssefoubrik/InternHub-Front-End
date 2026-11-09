@@ -8,16 +8,13 @@ import { Certificat, Role } from "@/types/types";
 import toast from "react-hot-toast";
 import CertificatInfos from "./CertificatInfos";
 import { useUser } from "@/context/userContext";
-import {
-  deleteFileFromSupabase,
-  uploadFileToSupabase,
-} from "@/lib/supabaseStorage";
-import { useAuth } from "@/context/authContext";
+import { deleteFile, uploadFile } from "@/lib/storageApi";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 interface CertificatContentProps {
   certificat: Certificat;
   certificats: Certificat[];
-  setCertificats: (certificats: Certificat[]) => void;
+  setCertificats: React.Dispatch<React.SetStateAction<Certificat[]>>;
 }
 
 const CertificatContent: React.FC<CertificatContentProps> = ({
@@ -25,17 +22,20 @@ const CertificatContent: React.FC<CertificatContentProps> = ({
   certificats,
   setCertificats,
 }) => {
-  const { currentUser } = useAuth();
-  const { student, updateCertificat, deleteCertificat, isUserProfile } =
-    useUser();
+  const { updateCertificat, deleteCertificat, isUserProfile } = useUser();
   const [isOpenModal, setIsOpenModal] = useState(false);
   const [editedCertificat, setEditedCertificat] =
     useState<Certificat>(certificat);
   const [file, setFile] = useState<File | null>(null);
+  const editorId = `certificate-${certificat.id}`;
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
+  const releaseEditor = useProfileEditLockStore((state) => state.release);
 
   const handleCancel = () => {
     setEditedCertificat(certificat);
+    setFile(null);
     setIsOpenModal(false);
+    releaseEditor(editorId);
   };
 
   const handleConfirm = async () => {
@@ -54,65 +54,43 @@ const CertificatContent: React.FC<CertificatContentProps> = ({
       return;
     }
 
-    if (file) {
-      // Extract the filename from the URL
-      const urlParts = editedCertificat.thumbnail.split("/");
-      const filename = urlParts[urlParts.length - 1];
-
-      console.log("filename : ", filename);
-      // Delete from Supabase
-      await deleteFileFromSupabase("images", decodeURIComponent(filename));
-      console.log("File deleted");
-      try {
-        const publicUrl = await uploadFileToSupabase(file as File, {
-          bucketName: "images",
-          fileName: `certificate-${editedCertificat.title}-${
-            student?.id
-          }-${Date.now()}.${file?.name.split(".").pop()}`,
-        });
-        const updatedCertificat = await updateCertificat({
-          ...editedCertificat,
-          thumbnail: publicUrl,
-        });
-        if (!updatedCertificat) toast.error("Failed to update certificate");
-        toast.success("Certificate updated successfully");
-        setEditedCertificat(updatedCertificat);
-        setCertificats(
-          certificats.map((c: Certificat) =>
-            c.id === certificat.id ? updatedCertificat : c
-          )
-        );
-      } catch (error) {
-        toast.error("Failed to update certificate : " + error);
+    try {
+      const previousThumbnail = editedCertificat.thumbnail;
+      const thumbnail = file ? await uploadFile(file) : previousThumbnail;
+      const updatedCertificat = await updateCertificat({
+        ...editedCertificat,
+        thumbnail,
+      });
+      if (!updatedCertificat) {
+        toast.error("Failed to update certificate");
         return;
       }
-    } else {
-      const updatedCertificat = await updateCertificat(editedCertificat);
-      setCertificats(
-        certificats.map((c: Certificat) =>
-          c.id === certificat.id ? updatedCertificat : c
-        )
+      if (file && previousThumbnail) await deleteFile(previousThumbnail);
+
+      setEditedCertificat(updatedCertificat);
+      setCertificats((current) =>
+        current.map((item) =>
+          item.id === updatedCertificat.id ? updatedCertificat : item,
+        ),
       );
+      setFile(null);
+      setIsOpenModal(false);
+      releaseEditor(editorId);
+      toast.success("Certificate updated successfully");
+    } catch (error) {
+      toast.error("Failed to update certificate : " + error);
     }
-    window.location.reload();
-    setIsOpenModal(false);
   };
 
   const handleDelete = async () => {
     try {
       // Extract the filename from the URL
-      const urlParts = certificat.thumbnail.split("/");
-      const filename = urlParts[urlParts.length - 1];
-
-      console.log("filename : ", filename);
-      // Delete from Supabase
-      await deleteFileFromSupabase("images", decodeURIComponent(filename));
-      console.log("File deleted");
       // Delete from database
       await deleteCertificat(certificat);
+      await deleteFile(certificat.thumbnail);
       // Update state
-      setCertificats(
-        certificats.filter((c: Certificat) => c.id !== certificat.id)
+      setCertificats((current) =>
+        current.filter((c) => c.id !== certificat.id),
       );
       toast.success("Certificate deleted successfully");
     } catch (error) {
@@ -127,7 +105,7 @@ const CertificatContent: React.FC<CertificatContentProps> = ({
   }, [certificat]);
 
   return (
-    <div className="rounded-lg flex flex-col justify-between border shadow-md hover:shadow-primary-hover hover:scale-105 transition-all duration-300">
+    <div className="rounded-lg flex flex-col justify-between border shadow-md hover:scale-105 transition-all duration-300">
       <div className="relative overflow-hidden w-full rounded-t-lg border-b-gray-300 border-[1px] group">
         <div className="cursor-pointer">
           <img
@@ -154,7 +132,9 @@ const CertificatContent: React.FC<CertificatContentProps> = ({
         <div className="flex w-full font-medium text-primary divide-x-2 divide-primary-hover text-center border-t-primary-hover border-t-[2px]">
           <div
             className="w-full rounded-bl-lg py-2 cursor-pointer hover:bg-primary hover:text-white"
-            onClick={() => setIsOpenModal(true)}
+            onClick={() => {
+              if (acquireEditor(editorId)) setIsOpenModal(true);
+            }}
           >
             Edit
           </div>
@@ -169,7 +149,10 @@ const CertificatContent: React.FC<CertificatContentProps> = ({
 
       <EditModal
         isOpenModal={isOpenModal}
-        setIsOpenModal={setIsOpenModal}
+        setIsOpenModal={(open) => {
+          if (!open) releaseEditor(editorId);
+          setIsOpenModal(open);
+        }}
         className="bg-white max-w-xl min-h-[60vh] flex flex-col"
         title="Edit Certificate"
         titleClassName="text-2xl font-medium"

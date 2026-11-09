@@ -38,26 +38,43 @@ export const CompanyMaps = ({ className }: CompanyMapsProps) => {
   const [isLoaded, setIsLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    if (company?.location?.latitude && company?.location?.longitude) {
-      const newPosition: [number, number] = [
-        company.location.latitude,
-        company.location.longitude,
-      ];
+    const latitude = Number(company?.location?.latitude);
+    const longitude = Number(company?.location?.longitude);
+    if (
+      company?.location?.latitude !== null &&
+      company?.location?.latitude !== undefined &&
+      company?.location?.longitude !== null &&
+      company?.location?.longitude !== undefined &&
+      Number.isFinite(latitude) &&
+      Number.isFinite(longitude) &&
+      (latitude !== 0 || longitude !== 0)
+    ) {
+      const newPosition: [number, number] = [latitude, longitude];
       setPosition(newPosition);
       setIsLoaded(true);
     }
   }, [company?.location]);
 
-  // Default position for initial render
   const defaultPosition: [number, number] = [0, 0];
+  const mapsUrl = isLoaded
+    ? `https://www.google.com/maps?q=${position[0]},${position[1]}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company?.name || "company location")}`;
 
   return (
-    <div className={cx("relative flex flex-col gap-4", className)}>
+    <div className={cx("relative gap-2", className)}>
+      <a
+        href={mapsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className=" absolute right-4 top-4 z-[1000] rounded bg-blue-500 px-4 py-2 font-semibold text-white hover:bg-blue-600 "
+      >
+        View in Google Maps
+      </a>
       <MapContainer
-        className="rounded-lg shadow-sm cursor-pointer z-10"
+        className="flex-1 rounded-lg shadow-sm cursor-pointer"
         center={defaultPosition}
         zoom={2}
-        style={{ height: "100%" }}
+        style={{ height: "100%", minHeight: "260px" }}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -70,16 +87,6 @@ export const CompanyMaps = ({ className }: CompanyMapsProps) => {
           </>
         )}
       </MapContainer>
-      {isLoaded && (
-        <a
-          href={`https://www.google.com/maps?q=${position[0]},${position[1]}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute right-4 top-4 z-[1000] bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded w-fit"
-        >
-          View in Google Maps
-        </a>
-      )}
     </div>
   );
 };

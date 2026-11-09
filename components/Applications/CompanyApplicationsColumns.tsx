@@ -48,6 +48,7 @@ export const CompanyApplicationsColumns: ColumnDef<Application>[] = [
     filterFn: "includesString",
   },
   {
+    id: "internshipTitle",
     accessorFn: (row) => row.internshipResponse.title,
     header: "Internship",
     cell: ({ row }) => row.original.internshipResponse.title,

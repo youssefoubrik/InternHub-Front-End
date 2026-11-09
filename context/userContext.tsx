@@ -30,8 +30,8 @@ interface UserContextType {
   getCompany: (id: string) => Promise<Company>;
   getStudent: (id: string) => Promise<Student>;
   getCompanies: () => Promise<void>;
-  updateStudent: (student: Student) => Promise<void>;
-  updateCompany: (company: Company) => Promise<void>;
+  updateStudent: (student: Student) => Promise<boolean>;
+  updateCompany: (company: Company) => Promise<boolean>;
   createExperience: (experience: Experience) => Promise<Experience>;
   updateExperience: (experience: Experience) => Promise<Experience>;
   deleteExperience: (experience: Experience) => Promise<void>;
@@ -51,8 +51,7 @@ const UserContext = createContext<UserContextType | null>(null);
 export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { isAuthenticated, currentUser } = useAuth();
-  // const { getCompanyInternships } = useInternship();
+  const { currentUser } = useAuth();
   const [isUserProfile, setIsUserProfile] = useState<boolean>(false);
   const [company, setCompany] = useState<Company>({ name: "" } as Company);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -89,25 +88,28 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
       return null;
     }
   };
-  const updateStudent = async (student: Student) => {
+  const updateStudent = async (student: Student): Promise<boolean> => {
     try {
       const studentRequest: StudentRequest = student as StudentRequest;
-      console.log("student id ", student.id);
-      console.log("current user id ", currentUser?.id);
       const data = await RequestWithAuth(`students/${student.id}`, {
         method: "PUT",
         body: JSON.stringify(studentRequest),
       });
-      if (!data) toast.error("Failed to update student");
-      else toast.success("Student updated successfully");
+      if (!data) {
+        toast.error("Failed to update student");
+        return false;
+      }
+
       setStudent(data as Student);
+      toast.success("Student updated successfully");
+      return true;
     } catch (error) {
-      console.error("Failed to update student", error);
       toast.error("Failed to update student");
+      return false;
     }
   };
 
-  const updateCompany = async (company: Company) => {
+  const updateCompany = async (company: Company): Promise<boolean> => {
     try {
       const companyRequest: CompanyRequest = company as CompanyRequest;
       console.log("company before update : ", companyRequest);
@@ -115,11 +117,17 @@ export const UserContextProvider: React.FC<{ children: React.ReactNode }> = ({
         method: "PUT",
         body: JSON.stringify(companyRequest),
       });
-      if (!data) toast.error("Failed to update company");
-      else toast.success("Company updated successfully");
+      if (!data) {
+        toast.error("Failed to update company");
+        return false;
+      }
       setCompany(data as Company);
+      toast.success("Company updated successfully");
+      return true;
     } catch (error) {
       console.error("Failed to update company", error);
+      toast.error("Failed to update company");
+      return false;
     }
   };
 

@@ -6,12 +6,20 @@ import { Textarea } from "../ui/textarea";
 import { useUser } from "@/context/userContext";
 import { useAuth } from "@/context/authContext";
 import { Role } from "@/types/types";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 const InfosCard = () => {
   const { student, updateStudent, isUserProfile } = useUser();
   const { currentUser } = useAuth();
   const [isOpenModal, setIsOpenModal] = useState<boolean>(false);
   const [description, setDescription] = useState<string>("");
+  const editorId = "student-infos";
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
+  const releaseEditor = useProfileEditLockStore((state) => state.release);
+  const closeEditor = () => {
+    setIsOpenModal(false);
+    releaseEditor(editorId);
+  };
   useEffect(() => {
     setDescription(student?.profileDescription || "");
   }, [student?.profileDescription]);
@@ -23,7 +31,9 @@ const InfosCard = () => {
           <div>
             <Pencil
               className="text-primary h-7 w-7 hover:text-primary-hover cursor-pointer"
-              onClick={() => setIsOpenModal(true)}
+              onClick={() => {
+                if (acquireEditor(editorId)) setIsOpenModal(true);
+              }}
             />
           </div>
         )}
@@ -38,7 +48,7 @@ const InfosCard = () => {
       {isOpenModal && (
         <EditModal
           isOpenModal={isOpenModal}
-          setIsOpenModal={setIsOpenModal}
+          setIsOpenModal={(open) => open ? setIsOpenModal(true) : closeEditor()}
           className="bg-white max-w-xl min-h-[60vh] flex flex-col justify-between"
           title="Edit Infos"
           titleClassName="text-2xl"
@@ -53,7 +63,7 @@ const InfosCard = () => {
           cancelButton="Cancel"
           onCancel={() => {
             setDescription(student?.profileDescription || "");
-            setIsOpenModal(false);
+            closeEditor();
           }}
           cancelButtonClassName="border-primary border-[1px] text-primary bg-transparent"
           confirmButton="Save"
@@ -62,7 +72,7 @@ const InfosCard = () => {
               ...student,
               profileDescription: description,
             });
-            setIsOpenModal(false);
+            closeEditor();
           }}
         />
       )}
