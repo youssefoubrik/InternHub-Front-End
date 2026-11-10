@@ -48,6 +48,7 @@ export const CompanyApplicationsColumns: ColumnDef<Application>[] = [
     filterFn: "includesString",
   },
   {
+    id: "internshipTitle",
     accessorFn: (row) => row.internshipResponse.title,
     header: "Internship",
     cell: ({ row }) => row.original.internshipResponse.title,
@@ -96,8 +97,8 @@ export const CompanyApplicationsColumns: ColumnDef<Application>[] = [
         subject: string,
         attachments: File[]
       ) => {
-        await acceptApplication(row.original.id , message, subject, attachments);
-        setAcceptDialog(false);
+        const success = await acceptApplication(row.original.id , message, subject, attachments);
+        if (success) setAcceptDialog(false);
       };
 
       const handleRejectApplication = async (
@@ -105,8 +106,8 @@ export const CompanyApplicationsColumns: ColumnDef<Application>[] = [
         subject: string,
         attachments: File[]
       ) => {
-        await rejectApplication(row.original.id , message, subject, attachments);
-        setRejectDialog(false);
+        const success = await rejectApplication(row.original.id , message, subject, attachments);
+        if (success) setRejectDialog(false);
       };
 
       return (
@@ -142,41 +143,41 @@ export const CompanyApplicationsColumns: ColumnDef<Application>[] = [
                 />
                 Go to Internship Page
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Eye strokeWidth={3} className="mr-2 h-4 w-4" />
+              <DropdownMenuItem asChild>
                 <a
                   href={row.original.cv}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 no-underline"
+                  className="cursor-pointer"
                 >
+                  <Eye strokeWidth={3} className="mr-2 h-4 w-4" />
                   View CV
                 </a>
               </DropdownMenuItem>
               {row.original.motivationLetter && (
-                <DropdownMenuItem>
-                  <Eye strokeWidth={3} className="mr-2 h-4 w-4" />
+                <DropdownMenuItem asChild>
                   <a
                     href={row.original.motivationLetter}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 no-underline"
+                    className="cursor-pointer"
                   >
+                    <Eye strokeWidth={3} className="mr-2 h-4 w-4" />
                     View Motivation Letter
                   </a>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => setAcceptDialog(true)}>
+              {row.original.status === ApplicationStatus.PENDING && <DropdownMenuItem onClick={() => setAcceptDialog(true)}>
                 <CheckCheck
                   strokeWidth={3}
                   className="mr-2 h-4 w-4 hover-text-green-500"
                 />
                 Accept
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setRejectDialog(true)}>
+              </DropdownMenuItem>}
+              {(row.original.status === ApplicationStatus.PENDING || row.original.status === ApplicationStatus.ACCEPTED) && <DropdownMenuItem onClick={() => setRejectDialog(true)}>
                 <X strokeWidth={3} className="mr-2 h-4" />
                 Reject
-              </DropdownMenuItem>
+              </DropdownMenuItem>}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -190,8 +191,8 @@ export const CompanyApplicationsColumns: ColumnDef<Application>[] = [
               internshipConcerned={row.original.internshipResponse}
             />
           )}
-          { 
-            row.original.status === ApplicationStatus.PENDING && (
+          {
+            (row.original.status === ApplicationStatus.PENDING || row.original.status === ApplicationStatus.ACCEPTED) && (
             <RejectApplicationDialog
               isOpen={rejectDialog}
               setIsOpen={setRejectDialog}

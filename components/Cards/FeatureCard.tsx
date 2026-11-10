@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { CheckCircleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Button from "../Button";
-import { useAuth } from "@/context/authContext";
 
 interface FeatureCardProps {
     icon: JSX.Element;
@@ -16,7 +15,6 @@ interface FeatureCardProps {
 
 const FeatureCard = ({ icon, title, description, benefits, actionLabel, actionLink }: FeatureCardProps) => {
     const router = useRouter();
-    const { isAuthenticated } = useAuth();
     return (
         <Card className="flex flex-col h-full rounded-xl border-none shadow-md">
             <CardHeader>
@@ -39,7 +37,6 @@ const FeatureCard = ({ icon, title, description, benefits, actionLabel, actionLi
             <CardFooter>
                 <Button label={actionLabel} onClick={() => {
                     router.push('/profile');
-                    // isAuthenticated ? router.push(actionLink) : router.push("http://localhost:8000/login");
                 }} />
             </CardFooter>
         </Card>

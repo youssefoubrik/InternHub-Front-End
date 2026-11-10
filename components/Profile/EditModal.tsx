@@ -13,29 +13,30 @@ import { useState } from "react";
 interface EditModalProps {
   isOpenModal: boolean;
   setIsOpenModal: (open: boolean) => void;
-  className? : string ;
-  headerClassName? : string;
+  className?: string;
+  headerClassName?: string;
   title?: React.ReactNode;
   titleClassName?: string;
   description?: React.ReactNode;
   descriptionClassName?: string;
   body?: React.ReactNode;
-  footerClassName? : string ; 
+  footerClassName?: string;
   cancelButton?: string;
   cancelButtonClassName?: string;
   confirmButton?: string;
   confirmButtonClassName?: string;
-  onConfirm?: ( input : any ) => void;
+  confirmButtonDisabled?: boolean;
+  onConfirm?: (input: any) => void;
   onCancel?: () => void;
 }
 
 const EditModal = ({
   isOpenModal,
   setIsOpenModal,
-  className ,
+  className,
   headerClassName,
-  title ,
-  titleClassName , 
+  title,
+  titleClassName,
   description,
   descriptionClassName,
   body,
@@ -44,12 +45,15 @@ const EditModal = ({
   cancelButtonClassName,
   confirmButton,
   confirmButtonClassName,
+  confirmButtonDisabled = false,
   onConfirm,
   onCancel,
 }: EditModalProps) => {
   return (
-    <Dialog open={isOpenModal} onOpenChange={setIsOpenModal} >
-      <DialogContent className={clsx(className)}>
+    <Dialog open={isOpenModal} onOpenChange={setIsOpenModal}>
+      <DialogContent
+        className={clsx("w-[60vw] !max-w-[60vw] h-fit", className)}
+      >
         <DialogHeader className={clsx(headerClassName)}>
           <DialogTitle className={clsx(titleClassName)}>{title}</DialogTitle>
           <DialogDescription className={clsx(descriptionClassName)}>
@@ -67,6 +71,7 @@ const EditModal = ({
             <Button
               className={clsx(confirmButtonClassName)}
               onClick={onConfirm}
+              disabled={confirmButtonDisabled}
             >
               {confirmButton}
             </Button>

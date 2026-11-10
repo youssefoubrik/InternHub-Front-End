@@ -19,6 +19,10 @@ import { AlertTriangle, Flag, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import Link from "next/link";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
+import { Role } from "@/types/types";
+import { BlockCompanyDialog } from "@/components/Dialogs/BlockCompanyDialog";
 
 const page = () => {
   const { currentUser, loading } = useAuth();
@@ -30,6 +34,9 @@ const page = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showAlert, setShowAlert] = useState(true);
   const [isFlagModalOpen, setIsFlagModalOpen] = useState(false);
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+  const isCompanyOwner =
+    currentUser?.role === "COMPANY" && currentUser.id === companyId;
   const { checkIsUserProfile, isUserProfile, company, setCompany, getCompany } =
     useUser();
   const {
@@ -46,46 +53,54 @@ const page = () => {
   const [rejectedApplicationsCount, setRejectedApplicationsCount] =
     useState<number>(0);
 
+  const isAdmin = currentUser?.role === Role.ADMIN;
+
+  useEffect(() => () => useProfileEditLockStore.getState().reset(), []);
+
   useEffect(() => {
+    if (!isCompanyOwner) return;
     const fetchApplicationsCount = async () => {
       const count = await countCompanyApplications(companyId);
       setApplicationsCount(count);
     };
     fetchApplicationsCount();
-  }, [companyId]);
+  }, [companyId, isCompanyOwner]);
 
   useEffect(() => {
+    if (!isCompanyOwner) return;
     const fetchPendingApplicationsCount = async () => {
       const count = await countCompanyApplicationsWithStatus(
         companyId,
-        ApplicationStatus.PENDING
+        ApplicationStatus.PENDING,
       );
       setPendingApplicationsCount(count);
     };
     fetchPendingApplicationsCount();
-  }, [companyId]);
+  }, [companyId, isCompanyOwner]);
 
   useEffect(() => {
+    if (!isCompanyOwner) return;
     const fetchAcceptedApplicationsCount = async () => {
       const count = await countCompanyApplicationsWithStatus(
         companyId,
-        ApplicationStatus.ACCEPTED
+        ApplicationStatus.ACCEPTED,
       );
       setAcceptedApplicationsCount(count);
     };
     fetchAcceptedApplicationsCount();
-  }, [companyId]);
+  }, [companyId, isCompanyOwner]);
 
   useEffect(() => {
+    if (!isCompanyOwner) return;
     const fetchRejectedApplicationsCount = async () => {
       const count = await countCompanyApplicationsWithStatus(
         companyId,
-        ApplicationStatus.REJECTED
+        ApplicationStatus.REJECTED,
       );
       setRejectedApplicationsCount(count);
     };
     fetchRejectedApplicationsCount();
-  }, [companyId]);
+  }, [companyId, isCompanyOwner]);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -114,7 +129,9 @@ const page = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(
-    company?.internships?.length ? company.internships.length / itemsPerPage : 1
+    company?.internships?.length
+      ? company.internships.length / itemsPerPage
+      : 1,
   );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -161,6 +178,26 @@ const page = () => {
     }
   };
 
+  const handleBlockCompany = async (message: string, subject: string, attachments: File[]) => {
+    try {
+      const token = getValidToken();
+      if (!token) throw new Error("Authentication required");
+      const formData = new FormData();
+      formData.append("message", message);
+      formData.append("subject", subject);
+      attachments.forEach((file) => formData.append("attachments", file));
+      await axios.post(`/companies/${companyId}/block`, formData, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+      });
+      if (company) setCompany({ ...company, blocked: true, blockedAt: new Date() });
+      toast.success("Company blocked successfully");
+      setIsBlockDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to block company:", error);
+      toast.error("Failed to block company");
+    }
+  };
+
   const scrollToFlag = () => {
     document
       .getElementById("flag-button")
@@ -169,7 +206,7 @@ const page = () => {
 
   return company && Object.keys(company).length > 0 ? (
     <div className=" px-14 py-11 flex flex-col gap-8">
-      {showAlert && !isUserProfile && (
+      {!isLoading && showAlert && !isAdmin && !isUserProfile && currentUser && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
@@ -194,11 +231,11 @@ const page = () => {
         </div>
       )}
 
-      <div className="flex gap-3 w-full">
+      <div className="flex flex-col gap-3 w-full md:flex-row">
         <CompanyProfile />
-        <CompanyMaps className="w-[30%]" />
+        <CompanyMaps className="w-full md:w-[35%] h-[400px] md:h-auto" />
       </div>
-      {isUserProfile && (
+      {isUserProfile && isCompanyOwner && (
         <div>
           <h1 className="header !font-medium mt-7 mb-10">Dashboard</h1>
           <CompanyProfileStats
@@ -211,8 +248,8 @@ const page = () => {
       )}
       <div className="flex items-center gap-3 mt-7">
         <h1 className="header !font-medium">Company Internships</h1>
-        {isUserProfile && (
-          <a
+        {isUserProfile && isCompanyOwner && (
+          <Link
             href="/post-internship"
             className="text-primary hover:text-primary-hover hover:underline text-base flex items-center gap-1"
           >
@@ -231,7 +268,7 @@ const page = () => {
               ></path>
             </svg>
             Post new internship
-          </a>
+          </Link>
         )}
       </div>
       <p className="text-gray-500">
@@ -241,7 +278,11 @@ const page = () => {
         <>
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {currentInternships.map((internship) => (
-              <Myinternship key={internship.id} internship={internship} />
+              <Myinternship
+                key={internship.id}
+                internship={internship}
+                canManage={isCompanyOwner}
+              />
             ))}
           </ul>
 
@@ -277,7 +318,19 @@ const page = () => {
         </div>
       )}
 
-      {!isUserProfile && (
+      {!isLoading && isAdmin && company && (
+        <div className="flex justify-center mt-8">
+          <Button
+            variant="destructive"
+            className="w-full md:w-auto"
+            disabled={company.blocked}
+            onClick={() => setIsBlockDialogOpen(true)}
+          >
+            {company.blocked ? "Company blocked" : "Block company"}
+          </Button>
+        </div>
+      )}
+      {!isLoading && !isAdmin && !isUserProfile && (currentUser?.role === Role.STUDENT || currentUser?.role === Role.COMPANY) && (
         <div className="flex justify-center mt-8">
           <Button
             id="flag-button"
@@ -295,7 +348,7 @@ const page = () => {
         <EditModal
           isOpenModal={isFlagModalOpen}
           setIsOpenModal={setIsFlagModalOpen}
-          className="bg-white max-w-lg flex flex-col text-black"
+          className="bg-white flex flex-col text-black z-[1000]"
           title="Flag Company as Suspicious"
           titleClassName="text-xl font-medium"
           cancelButton="Cancel"
@@ -308,12 +361,12 @@ const page = () => {
             if (success) {
               setIsFlagModalOpen(false);
               toast.success(
-                "Thank you for your report. Our team will review it shortly."
+                "Thank you for your report. Our team will review it shortly.",
               );
             }
           }}
           body={
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 pr-2">
               <div className="bg-gray-100 p-4 -mx-6 -mt-2 border-b border-gray-200">
                 <div className="flex gap-3 items-start">
                   <div className="bg-orange-600 p-2 rounded-md">
@@ -370,6 +423,14 @@ const page = () => {
               </div>
             </div>
           }
+        />
+      )}
+      {isAdmin && company && (
+        <BlockCompanyDialog
+          isOpen={isBlockDialogOpen}
+          setIsOpen={setIsBlockDialogOpen}
+          companyToBlock={{ id: companyId, name: company.name }}
+          onConfirm={handleBlockCompany}
         />
       )}
     </div>

@@ -25,7 +25,7 @@ export default function StudentSignupPage() {
   const onSignupSuccess = (
     email: string,
     data: SignUpFormData,
-    cooldownTime: number
+    cooldownTime: number,
   ) => {
     setUserData(data);
     setUserEmail(email);
@@ -34,7 +34,7 @@ export default function StudentSignupPage() {
   };
 
   const onVerificationSuccess = () => {
-    router.push("/signin");
+    router.replace("/signin");
   };
 
   return (

@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useUser } from "@/context/userContext";
 import {
   Check,
   MapPin,
@@ -14,19 +13,23 @@ import {
 } from "lucide-react";
 import ProfileAvatar from "../../ProfileAvatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { CompanyMaps } from "../../company/CompanyMaps";
 import dynamic from "next/dynamic";
+import { useCompanyProfileDraftStore } from "@/stores/companyProfileDraftStore";
 
-// // Dynamically import CompanyMaps with no SSR to avoid leaflet issues
-// const DynamicCompanyMaps = dynamic(
-//   () => import("../../company/CompanyMaps").then((mod) => mod.CompanyMaps),
-//   { ssr: false }
-// );
+const CompanyMaps = dynamic(
+  () =>
+    import("../../company/CompanyMaps").then((module) => module.CompanyMaps),
+  {
+    ssr: false,
+    loading: () => <div className="h-[260px] w-full rounded-lg bg-gray-100" />,
+  },
+);
 
 const CompanyUpdateSummary = ({ logo }: { logo: File | null }) => {
-  const { company } = useUser();
+  const company = useCompanyProfileDraftStore((state) => state.draft);
   const [showFullDescription, setShowFullDescription] = useState(false);
+
+  if (!company) return null;
 
   return (
     <div className="bg-white rounded-lg p-6 mt-4 space-y-6">
@@ -55,7 +58,7 @@ const CompanyUpdateSummary = ({ logo }: { logo: File | null }) => {
                 avatarImage={
                   logo
                     ? URL.createObjectURL(logo as File)
-                    : company?.profilePicture ?? ""
+                    : (company?.profilePicture ?? "")
                 }
                 avatarFallback={
                   <span className="text-white">
@@ -194,11 +197,14 @@ const CompanyUpdateSummary = ({ logo }: { logo: File | null }) => {
             </div>
           </div>
 
-          {company.location?.latitude && company.location?.longitude ? (
+          {company.location?.latitude != null && company.location?.longitude != null ? (
             <div className="flex flex-col flex-grow">
               <div className="flex-grow min-h-full">
                 {/* Use the dynamic import to avoid SSR issues with Leaflet */}
-                <CompanyMaps className="h-full w-full" />
+                <CompanyMaps
+                  className="h-full w-full"
+                  location={company.location}
+                />
               </div>
             </div>
           ) : (

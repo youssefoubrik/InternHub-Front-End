@@ -1,121 +1,209 @@
-import React from 'react'
-import { useUser } from '@/context/userContext'
-import { Location } from '@/context/internshipContext';
-import { Links } from '@/types/types';
-import InputField from '../InputField';
+import InputField from "@/components/InputField";
+import { StudentPortfolioErrors, StudentPortfolioField } from "@/lib/validation/studentPortfolio";
+import { useStudentProfileDraftStore } from "@/stores/studentProfileDraftStore";
+import { Location } from "@/types/types";
 
-const PortfolioInfos = () => {
-    const {student , setStudent} = useUser();
-    console.log('student : ',student);
+interface PortfolioInfosProps {
+  errors: StudentPortfolioErrors;
+  onFieldChange: (field: StudentPortfolioField) => void;
+}
+
+const PortfolioInfos = ({ errors, onFieldChange }: PortfolioInfosProps) => {
+  const draft = useStudentProfileDraftStore((state) => state.draft);
+  const updateDraft = useStudentProfileDraftStore((state) => state.updateDraft);
+
+  if (!draft) return null;
+
+  const updateField = <K extends keyof typeof draft>(
+    field: K,
+    value: (typeof draft)[K]
+  ) => {
+    updateDraft((current) => ({ ...current, [field]: value }));
+    onFieldChange(field as StudentPortfolioField);
+  };
+
+  const updateLocation = (field: keyof Location, value: string) => {
+    updateDraft((current) => ({
+      ...current,
+      location: {
+        address: "",
+        city: "",
+        country: "",
+        ...current.location,
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateLink = (
+    field: "github" | "linkedin" | "website",
+    value: string
+  ) => {
+    updateDraft((current) => ({
+      ...current,
+      links: { ...current.links, [field]: value },
+    }));
+    onFieldChange(`links.${field}`);
+  };
+
+  const fieldClass = (field: StudentPortfolioField) =>
+    `w-full ${errors[field] ? "border-red-500 focus:ring-red-500" : ""}`;
+
+  const errorMessage = (field: StudentPortfolioField) =>
+    errors[field] ? (
+      <p className="mt-1 text-sm text-red-600" role="alert">
+        {errors[field]}
+      </p>
+    ) : null;
+
   return (
-    <div>
+    <div className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+          <label htmlFor="portfolio-firstName" className="mb-1 block text-sm font-medium text-gray-700">
+            First Name
+          </label>
           <InputField
-            className="w-full"
-            value={student?.firstName || ''}
+            id="portfolio-firstName"
+            className={fieldClass("firstName")}
+            value={draft.firstName}
             type="text"
-            onChange={(e) => setStudent({ ...student, firstName: e.target.value })}
+            required
+            onChange={(event) => updateField("firstName", event.target.value)}
           />
+          {errorMessage("firstName")}
         </div>
         <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+          <label htmlFor="portfolio-lastName" className="mb-1 block text-sm font-medium text-gray-700">
+            Last Name
+          </label>
           <InputField
-            className="w-full"
-            value={student?.lastName || ''}
+            id="portfolio-lastName"
+            className={fieldClass("lastName")}
+            value={draft.lastName}
             type="text"
-            onChange={(e) => setStudent({ ...student, lastName: e.target.value })}
+            required
+            onChange={(event) => updateField("lastName", event.target.value)}
           />
+          {errorMessage("lastName")}
         </div>
       </div>
-      <div className="mt-4">
-        <label htmlFor="profileTitle" className="block text-sm font-medium text-gray-700 mb-1">Profile Title</label>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          Email
+        </label>
+        <p className={`rounded-md border bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 ${errors.email ? "border-red-500" : "border-gray-200"}`}>
+          {draft.email}
+        </p>
+        {errorMessage("email")}
+      </div>
+
+      <div>
+        <label htmlFor="portfolio-profileTitle" className="mb-1 block text-sm font-medium text-gray-700">
+          Profile Title
+        </label>
         <InputField
-          className="w-full"
-          value={student?.profileTitle || ''}
+          id="portfolio-profileTitle"
+          className={fieldClass("profileTitle")}
+          value={draft.profileTitle || ""}
           type="text"
-          onChange={(e) => setStudent({ ...student, profileTitle: e.target.value })}
+          onChange={(event) => updateField("profileTitle", event.target.value)}
+        />
+        {errorMessage("profileTitle")}
+      </div>
+
+      <div>
+        <label htmlFor="portfolio-school" className="mb-1 block text-sm font-medium text-gray-700">
+          School
+        </label>
+        <InputField
+          id="portfolio-school"
+          className="w-full"
+          value={draft.school || ""}
+          type="text"
+          onChange={(event) => updateField("school", event.target.value)}
         />
       </div>
-      <div className="mt-4">
-        <label htmlFor="school" className="block text-sm font-medium text-gray-700 mb-1">School</label>
+
+      <div>
+        <label htmlFor="portfolio-tel" className="mb-1 block text-sm font-medium text-gray-700">
+          Phone
+        </label>
         <InputField
-          className="w-full"
-          value={student?.school || ''}
-          type="text"
-          onChange={(e) => setStudent({ ...student, school: e.target.value })}
+          id="portfolio-tel"
+          className={fieldClass("tel")}
+          value={draft.tel || ""}
+          type="tel"
+          placeholder="0612345678"
+          onChange={(event) => updateField("tel", event.target.value)}
         />
+        {errorMessage("tel")}
       </div>
-      <div className="mt-4">
-        <label htmlFor="tel" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-        <InputField
-          className="w-full"
-          value={student?.tel || ''}
-          type="text"
-          onChange={(e) => setStudent({ ...student, tel: e.target.value })}
-        />
+
+      <div className="grid grid-cols-3 gap-4">
+        {(["address", "city", "country"] as const).map((field) => (
+          <div key={field}>
+            <label htmlFor={`portfolio-${field}`} className="mb-1 block text-sm font-medium capitalize text-gray-700">
+              {field}
+            </label>
+            <InputField
+              id={`portfolio-${field}`}
+              className="w-full"
+              value={draft.location?.[field] || ""}
+              type="text"
+              onChange={(event) => updateLocation(field, event.target.value)}
+            />
+          </div>
+        ))}
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-4">
+
+      <div className="grid grid-cols-3 gap-4">
         <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <label htmlFor="portfolio-github" className="mb-1 block text-sm font-medium text-gray-700">
+            GitHub
+          </label>
           <InputField
-            className="w-full"
-            value={student?.location?.address || ''}
-            type="text"
-            onChange={(e) => setStudent({ ...student, location: { ...student.location, address: e.target.value } as Location})}
-          />
-        </div>
-        <div>
-          <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">City</label>
-          <InputField
-            className="w-full"
-            value={student?.location?.city || ''}
-            type="text"
-            onChange={(e) => setStudent({ ...student, location: { ...student.location, city: e.target.value } as Location })}
-          />
-        </div>
-        <div>
-          <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-          <InputField
-            className="w-full"
-            value={student?.location?.country || ''}
-            type="text"
-            onChange={(e) => setStudent({ ...student, location: { ...student.location, country: e.target.value } as Location })}
-          />
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <div>
-          <label htmlFor="github" className="block text-sm font-medium text-gray-700 mb-1">Github</label>
-          <InputField
-            className="w-full"
-            value={student?.links?.github || ''}
+            id="portfolio-github"
+            className={fieldClass("links.github")}
+            value={draft.links?.github || ""}
             type="url"
-            onChange={(e) => setStudent({ ...student, links: { ...student.links, github: e.target.value } as Links})}
+            placeholder="https://github.com/username"
+            onChange={(event) => updateLink("github", event.target.value)}
           />
+          {errorMessage("links.github")}
         </div>
         <div>
-          <label htmlFor="linkedin" className="block text-sm font-medium text-gray-700 mb-1">LinkedIn</label>
+          <label htmlFor="portfolio-linkedin" className="mb-1 block text-sm font-medium text-gray-700">
+            LinkedIn
+          </label>
           <InputField
-            className="w-full"
-            value={student?.links?.linkedin || ''}
+            id="portfolio-linkedin"
+            className={fieldClass("links.linkedin")}
+            value={draft.links?.linkedin || ""}
             type="url"
-            onChange={(e) => setStudent({ ...student, links: { ...student.links, linkedin: e.target.value } as Links })}
+            placeholder="https://www.linkedin.com/in/username"
+            onChange={(event) => updateLink("linkedin", event.target.value)}
           />
+          {errorMessage("links.linkedin")}
         </div>
         <div>
-          <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">Portfolio or Website</label>
+          <label htmlFor="portfolio-website" className="mb-1 block text-sm font-medium text-gray-700">
+            Portfolio or Website
+          </label>
           <InputField
-            className="w-full"
-            value={student?.links?.website || ''}
+            id="portfolio-website"
+            className={fieldClass("links.website")}
+            value={draft.links?.website || ""}
             type="url"
-            onChange={(e) => setStudent({ ...student, links: { ...student.links, website: e.target.value } as Links })}
+            placeholder="https://example.com"
+            onChange={(event) => updateLink("website", event.target.value)}
           />
+          {errorMessage("links.website")}
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default PortfolioInfos
+export default PortfolioInfos;

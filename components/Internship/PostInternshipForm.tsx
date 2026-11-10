@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import AlertModal from "../AlertModal";
 import Button from "../Button";
 import JobDetails from "./JobDetails";
 import JobSkills from "./JobSkills ";
@@ -8,7 +7,11 @@ import JobTitle from "./JobTitle";
 import { useInternship } from "@/context/internshipContext";
 import Summary from "./Summary";
 import toast from "react-hot-toast";
-import { object } from "zod";
+import {
+  InternshipPostErrors,
+  InternshipPostField,
+  validateInternshipPost,
+} from "@/lib/validation/internshipPost";
 
 function PostInternshipForm() {
   const { createInternship, resetInternshipForm, internship } = useInternship();
@@ -18,6 +21,35 @@ function PostInternshipForm() {
     new Set([sections[0]])
   );
   const [activeSection, setActiveSection] = React.useState<string>(sections[0]);
+  const [errors, setErrors] = React.useState<InternshipPostErrors>({});
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const clearFieldError = (field: InternshipPostField) => {
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  };
+
+  const validateSection = (section: string) => {
+    const allErrors = validateInternshipPost(internship);
+    const fields: InternshipPostField[] = section === "About"
+      ? ["title", "workMode"]
+      : section === "Post Details"
+        ? ["description", "city", "duration", "salary", "salaryType"]
+        : ["skills", "tags"];
+    const sectionErrors = Object.fromEntries(
+      fields.filter((field) => allErrors[field]).map((field) => [field, allErrors[field]])
+    ) as InternshipPostErrors;
+
+    setErrors((current) => {
+      const next = { ...current };
+      fields.forEach((field) => delete next[field]);
+      return { ...next, ...sectionErrors };
+    });
+    if (Object.keys(sectionErrors).length) {
+      toast.error("Please fix the highlighted fields before continuing.", { id: "error" });
+      return false;
+    }
+    return true;
+  };
 
   const handleSectionChange = (section: string, Type: string) => {
     setVisitedSections((prev) => {
@@ -27,67 +59,8 @@ function PostInternshipForm() {
     });
   };
 
-  const validateInternshipTitleForm = () => {
-    const title = internship?.title;
-    const workMode = internship?.workMode;
-
-    if (!title || !workMode) {
-      return false;
-    }
-    return true;
-  };
-
-  const validateInternshipDetailsForm = () => {
-    const description = internship?.description;
-    const duration = internship?.duration;
-    const salary = internship?.salary;
-    const paid = internship?.paid;
-    const salaryType = internship?.salaryType;
-    const city = internship?.city;
-
-    if (!description || description.length < 120) {
-      toast.error("Description should be at least 120 characters", { id: "error" });
-      return false;
-    }
-
-    if (
-      !duration ||
-      !city ||
-      (paid && (!salary || salary < 500 || !salaryType))
-    ) {
-      toast.error("Please fill all the fields", { id: "error" });
-      return false;
-    }
-    return true;
-  };
-
-  const validateInternshipSkillsForm = () => {
-    const skills = internship?.skills;
-    const tags = internship?.tags;
-    if (!skills || skills.length === 0 || !tags || tags.length === 0) {
-      return false;
-    }
-    return true;
-  };
-
   const handleNextSection = () => {
-    if (activeSection === "About") {
-      if (!validateInternshipTitleForm()) {
-        toast.error("Please fill all the fields", { id: "error" });
-        return;
-      }
-    }
-    if (activeSection === "Post Details") {
-      if (!validateInternshipDetailsForm()) {
-        return;
-      }
-    }
-    if (activeSection === "Skills") {
-      if (!validateInternshipSkillsForm()) {
-        toast.error("Please fill all the fields", { id: "error" });
-        return;
-      }
-    }
+    if (activeSection !== "Summary" && !validateSection(activeSection)) return;
 
     const currentIndex = sections.indexOf(activeSection);
     setActiveSection(sections[currentIndex + 1]);
@@ -97,11 +70,11 @@ function PostInternshipForm() {
   const renderStages = () => {
     switch (activeSection) {
       case "About":
-        return <JobTitle />;
+        return <JobTitle errors={errors} onFieldChange={clearFieldError} />;
       case "Post Details":
-        return <JobDetails />;
+        return <JobDetails errors={errors} onFieldChange={clearFieldError} />;
       case "Skills":
-        return <JobSkills />;
+        return <JobSkills errors={errors} onFieldChange={clearFieldError} />;
       case "Summary":
         return <Summary />;
       default:
@@ -109,12 +82,31 @@ function PostInternshipForm() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (activeSection === "Summary") {
-      createInternship();
-      resetInternshipForm();
+    if (activeSection !== "Summary" || isSubmitting) return;
+
+    const nextErrors = validateInternshipPost(internship);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      const firstInvalidSection = nextErrors.title || nextErrors.workMode
+        ? "About"
+        : nextErrors.description || nextErrors.city || nextErrors.duration || nextErrors.salary || nextErrors.salaryType
+          ? "Post Details"
+          : "Skills";
+      setActiveSection(firstInvalidSection);
+      setVisitedSections((previous) => new Set([...previous, firstInvalidSection]));
+      toast.error("Please fix the highlighted fields before posting.", { id: "error" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const created = await createInternship();
+      if (created) resetInternshipForm();
+    } finally {
+      setIsSubmitting(false);
     }
   };
   return (
@@ -148,13 +140,14 @@ function PostInternshipForm() {
       <form
         action=""
         className="p-6 flex-1 bg-white rounded-lg w-full"
-        onSubmit={handleSubmit}
+        onSubmit={(event) => void handleSubmit(event)}
       >
         {renderStages()}
 
         <div className="gap-4 mt-4 w-full flex justify-between">
           <Button
             label="Previous"
+              type="button"
             onClick={() => {
               const currentIndex = sections.indexOf(activeSection);
               setActiveSection(sections[currentIndex - 1]);
@@ -167,6 +160,7 @@ function PostInternshipForm() {
           {activeSection !== "Summary" && (
             <Button
               label="Next"
+              type="button"
               onClick={handleNextSection}
               className="px-6 py-2 text-white rounded-md"
             />
@@ -175,6 +169,7 @@ function PostInternshipForm() {
           {activeSection === "Summary" && (
             <button
               type="submit"
+              disabled={isSubmitting}
               className="self-end px-6 py-2 bg-[#7263F3] text-white rounded-md"
             >
               Post Job

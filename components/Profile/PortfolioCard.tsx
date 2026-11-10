@@ -14,48 +14,106 @@ import { Separator } from "../ui/separator";
 import Overlay from "../Overlay";
 import AnimatedSocialButton from "./AnimatedSocialButton";
 import { useUser } from "@/context/userContext";
-import {
-  uploadFileToSupabase,
-  deleteFileFromSupabase,
-} from "@/lib/supabaseStorage";
+import { uploadFile, deleteFile } from "@/lib/storageApi";
 import toast from "react-hot-toast";
 import EditModal from "./EditModal";
 import PortfolioInfos from "./PortfolioInfos";
+import { useStudentProfileDraftStore } from "@/stores/studentProfileDraftStore";
+import {
+  normalizeStudentPortfolio,
+  StudentPortfolioErrors,
+  validateStudentPortfolio,
+} from "@/lib/validation/studentPortfolio";
+import { Student } from "@/types/types";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 const PortfolioCard = () => {
-  const { student, setStudent, updateStudent, isUserProfile } = useUser();
+  const { student, updateStudent, isUserProfile } = useUser();
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [validationErrors, setValidationErrors] =
+    useState<StudentPortfolioErrors>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const setDraft = useStudentProfileDraftStore((state) => state.setDraft);
+  const resetDraft = useStudentProfileDraftStore((state) => state.resetDraft);
+  const editorId = "student-portfolio";
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
+  const releaseEditor = useProfileEditLockStore((state) => state.release);
 
-  console.log("is user profile", isUserProfile);
+  const openProfileEditor = () => {
+    if (!acquireEditor(editorId)) return;
+    const draft: Student = {
+      ...student,
+      location: student.location
+        ? { ...student.location }
+        : {
+            address: "",
+            city: "",
+            country: "",
+          },
+      links: { ...student.links },
+    };
+    setDraft(draft);
+    setValidationErrors({});
+    setIsEditing(true);
+  };
+
+  const cancelProfileEditor = () => {
+    resetDraft();
+    setValidationErrors({});
+    setIsEditing(false);
+    releaseEditor(editorId);
+  };
+
+  const saveProfile = async () => {
+    if (isSaving) return;
+
+    const draft = useStudentProfileDraftStore.getState().draft;
+    if (!draft) return;
+
+    const normalizedDraft = normalizeStudentPortfolio(draft);
+    const errors = validateStudentPortfolio(normalizedDraft);
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      toast.error("Please fix the highlighted fields before saving.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const saved = await updateStudent(normalizedDraft);
+      if (!saved) return;
+
+      resetDraft();
+      setValidationErrors({});
+      setIsEditing(false);
+      releaseEditor(editorId);
+    } catch {
+      toast.error("Failed to update student");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleImageSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (!isUserProfile) return;
 
     const file = event.target.files?.[0];
     if (file) {
-      deleteFileFromSupabase(
-        "images",
-        student.profilePicture?.split("/").pop() || ""
-      );
+      if (student.profilePicture) await deleteFile(student.profilePicture);
 
       try {
-        // Upload file to Supabase
-        const publicUrl = await uploadFileToSupabase(file, {
-          bucketName: "images",
-          fileName: `profile-picture-${student?.id}-${Date.now()}.${file.name
-            .split(".")
-            .pop()}`,
-        });
+        const publicUrl = await uploadFile(file);
+        console.log("Profile picture uploaded successfully:", publicUrl);
         // Update student? with the new profile picture URL
         updateStudent({
           ...student,
           profilePicture: publicUrl,
         });
       } catch (error) {
-        console.error("Error uploading profile picture:", error);
         toast.error("Failed to upload profile picture:" + error);
         // Handle error (show toast, alert, etc.)
       }
@@ -70,35 +128,29 @@ const PortfolioCard = () => {
   const handleResetImage = async (e: React.MouseEvent) => {
     if (!isUserProfile) return;
     e.stopPropagation();
+
+    console.log("public url:", student?.profilePicture);
     if (student?.profilePicture) {
       try {
         // Extract filename from URL
-        const filename = student?.profilePicture.split("/").pop() || "";
-        // Delete from Supabase
-        await deleteFileFromSupabase("images", filename);
+        await deleteFile(student.profilePicture);
         // Update student?
         updateStudent({
           ...student,
           profilePicture: "",
         });
       } catch (error) {
-        console.error("Error deleting profile picture:", error);
         toast.error("Failed to delete profile picture:" + error);
         // Handle error (show toast, alert, etc.)
       }
-    } else {
-      setStudent({
-        ...student,
-        profilePicture: "",
-      });
     }
   };
 
   return (
-    <div className="flex flex-row-reverse gap-2 w-full">
-      <div className="flex flex-col items-center gap-2 bg-gray-50 border-primary-hover shadow-sm py-4 px-5 rounded-lg w-[30%]">
-        <div className="flex-row-reverse flex justify-around items-center">
-          <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col lg:flex-row-reverse gap-2 w-full">
+      <div className="flex flex-col items-center gap-2 bg-gray-50 border-primary-hover shadow-sm py-4 px-5 rounded-lg lg:w-[30%] w-full">
+        <div className="flex flex-row-reverse justify-around items-center">
+          <div className="flex lg:flex-col flex-row-reverse items-center gap-4 justify-between lg:justify-center">
             <input
               type="file"
               ref={fileInputRef}
@@ -139,20 +191,20 @@ const PortfolioCard = () => {
             </div>
           </div>
         </div>
-        {/* <button className="w-[85%] hover:bg-opacity-80 border-gray-400 border-[1px] bg-gray-200 py-1 rounded-md">Edit profile</button> */}
       </div>
-      <div className="bg-gray-50 relative border-primary-hover py-7 px-10 shadow-sm rounded-lg w-[70%]">
+
+      <div className="bg-gray-50 relative border-primary-hover py-7 px-10 shadow-sm rounded-lg lg:w-[70%] w-full">
         {isUserProfile && (
           <Pencil
             className="absolute top-4 right-4 text-primary h-7 w-7 hover:text-primary-hover cursor-pointer"
-            onClick={() => setIsEditing(true)}
+            onClick={openProfileEditor}
           />
         )}
         <div className="flex flex-col gap-5 justify-between h-full text-lg">
           <div className="flex flex-col gap-3">
             <div className="flex justify-start items-center gap-3">
               <University className="mb-2" />
-              <p>{student?.school || "Not set"}</p>
+              <p>{student?.school || "N/A"}</p>
             </div>
             <div className="flex justify-start items-center gap-3">
               <Mail />
@@ -160,18 +212,19 @@ const PortfolioCard = () => {
             </div>
             <div className="flex justify-start items-center gap-3">
               <Phone />
-              <p>{student?.tel ?? "Not set"}</p>
+              <p>{student?.tel ?? "N/A"}</p>
             </div>
             <div className="flex justify-start items-center gap-3">
               <MapPinHouse />
               <p>
-                {student?.location
-                  ? (student?.location?.address ?? "") +
-                    ", " +
-                    (student?.location?.city ?? "") +
-                    ", " +
-                    (student?.location?.country ?? "")
-                  : "Not set"}
+                {[
+                  student?.location?.address,
+                  student?.location?.city,
+                  student?.location?.country,
+                ]
+                  .map((value) => value?.trim())
+                  .filter((value): value is string => Boolean(value))
+                  .join(", ") || "N/A"}
               </p>
             </div>
           </div>
@@ -195,23 +248,36 @@ const PortfolioCard = () => {
           </div>
         </div>
       </div>
+
       {isEditing && (
         <EditModal
           isOpenModal={isEditing}
-          setIsOpenModal={setIsEditing}
+          setIsOpenModal={(open) => {
+            if (open) openProfileEditor();
+            else cancelProfileEditor();
+          }}
           className="bg-white max-w-xl min-h-[60vh] flex flex-col"
           title="Modify Your Infos"
           titleClassName="text-2xl font-medium"
           cancelButton="Cancel"
           cancelButtonClassName="bg-gray-200 text-black hover:bg-gray-300"
-          onCancel={() => setIsEditing(false)}
+          onCancel={cancelProfileEditor}
           confirmButton="Edit"
           confirmButtonClassName="bg-primary w-20 text-white hover:bg-primary-hover"
-          onConfirm={() => {
-            updateStudent(student);
-            setIsEditing(false);
-          }}
-          body={<PortfolioInfos />}
+          confirmButtonDisabled={isSaving}
+          onConfirm={saveProfile}
+          body={
+            <PortfolioInfos
+              errors={validationErrors}
+              onFieldChange={(field) =>
+                setValidationErrors((current) => {
+                  const next = { ...current };
+                  delete next[field];
+                  return next;
+                })
+              }
+            />
+          }
         />
       )}
     </div>

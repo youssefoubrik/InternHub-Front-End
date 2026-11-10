@@ -1,5 +1,4 @@
 "use client";
-import { HomeStatistics } from "@/app/WhyChooseClient";
 import InternshipOpportunities from "./InternshipOpportunities";
 import MoroccanCompanies from "./MoroccanCompanies";
 import TalentedStudents from "./TalentedStudents";

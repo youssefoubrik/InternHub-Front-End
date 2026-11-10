@@ -26,6 +26,8 @@ function Filters() {
       pfe: false,
       initiation: false,
       paid: null,
+      location: "",
+      title: "",
     });
     // setSearchQuery({ location: "", title: "" });
   };

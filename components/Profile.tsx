@@ -7,17 +7,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/authContext";
 import { User } from "@/types/types";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { BriefcaseBusiness, LogOut, User as UserIcon } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import React from "react";
+import { Role } from "@/types/types";
 
 interface ProfileProps {
   user: User;
 }
 export const Profile: React.FC<ProfileProps> = ({ user }) => {
   const { logout } = useAuth();
-  const router = useRouter();
   const { profilePicture } = user;
   return (
     <DropdownMenu>
@@ -33,14 +33,28 @@ export const Profile: React.FC<ProfileProps> = ({ user }) => {
         </DropdownMenuTrigger>
       </div>
       <DropdownMenuContent className="w-56 z-[1000]" align="end">
+        {!user?.blocked && user.role === Role.STUDENT && (
+          <DropdownMenuItem asChild>
+            <Link href={`/student/${user.id}/applications`}>
+              <BriefcaseBusiness className="mr-2 h-4 w-4" />
+              <span>Applications</span>
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {!user?.blocked && user.role === Role.COMPANY && (
+          <DropdownMenuItem asChild>
+            <Link href={`/company/${user.id}/applications/filter`}>
+              <BriefcaseBusiness className="mr-2 h-4 w-4" />
+              <span>Applications</span>
+            </Link>
+          </DropdownMenuItem>
+        )}
         {!user?.blocked && (
-          <DropdownMenuItem
-            onClick={() =>
-              router.push(`/profile/${user.role.toLowerCase()}/${user.id}`)
-            }
-          >
-            <UserIcon className="mr-2 h-4 w-4" />
-            <span>Profile</span>
+          <DropdownMenuItem asChild>
+            <Link href={`/profile/${user.role.toLowerCase()}/${user.id}`}>
+              <UserIcon className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </Link>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

@@ -1,6 +1,4 @@
-import { useParams } from "next/navigation";
 import { DataTable } from "@/components/Applications/application-table";
-import { ColumnFiltersState } from "@tanstack/react-table";
 import { useInternship } from "@/context/internshipContext";
 import { StudentApplicationsColumns } from "./StudentApplicationsColumns";
 
@@ -11,6 +9,14 @@ interface StudentApplicationsProps {
 const StudentApplications = ({ internshipTitle }: StudentApplicationsProps) => {
   const { applications } = useInternship();
   const columns = StudentApplicationsColumns;
+  const internshipOptions = Array.from(
+    new Map(
+      applications.map((application) => [
+        application.internshipResponse.id,
+        application.internshipResponse,
+      ]),
+    ).values(),
+  );
 
   return (
     <div className="py-10 px-14">
@@ -20,6 +26,7 @@ const StudentApplications = ({ internshipTitle }: StudentApplicationsProps) => {
         columns={columns}
         data={applications}
         defaultInternship={internshipTitle}
+        internshipOptions={internshipOptions}
         hiddenEmailInput={true}
       />
     </div>

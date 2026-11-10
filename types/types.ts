@@ -108,7 +108,7 @@ export interface Internship {
   salary: number | null;
   salaryType: SalaryType;
   title: string;
-  location: Location;
+  location: string;
   workMode: WorkMode;
   tags: InternshipType[];
   skills: string[];
@@ -117,8 +117,8 @@ export interface Internship {
   negotiable: boolean;
   paid: boolean;
   likes: string[];
-  closed : boolean ;
-  applicants : Student[];
+  closed: boolean;
+  applicants: Student[];
 }
 
 export interface InternshipRequest {
@@ -166,7 +166,7 @@ export const getColorsByApplicationStatus = (status: ApplicationStatus) => {
     case ApplicationStatus.REJECTED:
       return "bg-red-500 hover:bg-red-600";
     case ApplicationStatus.PENDING:
-      return "bg-blue-500 hover:bg-blue-600"
+      return "bg-blue-500 hover:bg-blue-600";
   }
 };
 
@@ -328,5 +328,7 @@ export interface CompanyFlag {
   studentLastName: string;
   companyEmail: string;
   studentEmail: string;
+  reporterCompanyId?: string | null;
+  reporterCompanyName?: string | null;
   screenshots: string[];
 }

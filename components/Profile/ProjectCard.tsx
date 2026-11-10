@@ -2,21 +2,23 @@
 import React, { useEffect, useState } from "react";
 import PlusButton from "../PlusButton";
 import ProjectContent from "./ProjectContent";
-import { Project, Role } from "@/types/types";
+import { Project } from "@/types/types";
 import EditModal from "./EditModal";
 import ProjectInfos from "./ProjectInfos";
 import toast from "react-hot-toast";
 import { useUser } from "@/context/userContext";
-import { useAuth } from "@/context/authContext";
-import { uploadFileToSupabase } from "@/lib/supabaseStorage";
+import { uploadFile } from "@/lib/storageApi";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 const ProjectCard = () => {
   const [file, setFile] = useState<File | null>(null);
   const { student, createProject, isUserProfile } = useUser();
-  const { currentUser } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isOpenModal, setIsOpenModal] = useState(false);
   const [newProject, setNewProject] = useState<Project>({} as Project);
+  const editorId = "project-new";
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
+  const releaseEditor = useProfileEditLockStore((state) => state.release);
 
   const handleCancel = () => {
     setNewProject({
@@ -25,58 +27,50 @@ const ProjectCard = () => {
       image: "",
       link: "",
     });
+    setFile(null);
     setIsOpenModal(false);
+    releaseEditor(editorId);
   };
 
   const handleConfirm = async () => {
-    if (!newProject?.title) {
+    const title = newProject?.title?.trim() || "";
+    if (!title) {
       toast.error("Please enter a project title");
       return;
     }
 
-    if (!newProject?.link) {
-      toast.error("Please enter a link to your project");
-      return;
+    const link = newProject.link?.trim() || "";
+    if (link) {
+      try {
+        const url = new URL(link);
+        if (!["http:", "https:"].includes(url.protocol)) throw new Error();
+      } catch {
+        toast.error("Please enter a valid http or https URL");
+        return;
+      }
     }
 
     try {
-      new URL(newProject.link);
-    } catch (error) {
-      toast.error("Please enter a valid URL");
-      return;
-    }
-
-    if (!newProject.image) {
-      toast.error("Please add a project image");
-      return;
-    }
-
-    console.log("new project : ", newProject);
-    try {
-      const publicUrl = await uploadFileToSupabase(file as File, {
-        bucketName: "images",
-        fileName: `project-${newProject.title}-${student?.id}.${newProject.image
-          .split(".")
-          .pop()}`,
-      });
+      const publicUrl = file ? await uploadFile(file) : "";
       const result = await createProject({
         ...newProject,
+        title,
+        link,
         image: publicUrl,
       });
-      if (!result) toast.error("Failed to create project");
+      if (!result) {
+        toast.error("Failed to create project");
+        return;
+      }
       toast.success("Project created successfully");
+      setProjects((previous) => [...previous, result]);
+      setIsOpenModal(false);
+      releaseEditor(editorId);
+      setNewProject({ id: "", title: "", image: "", link: "" });
+      setFile(null);
     } catch (error) {
       toast.error("Failed to create project : " + error);
-    } finally {
-      window.location.reload();
     }
-    setIsOpenModal(false);
-    setNewProject({
-      id: "",
-      title: "",
-      image: "",
-      link: "",
-    });
   };
 
   useEffect(() => {
@@ -109,7 +103,9 @@ const ProjectCard = () => {
           </div>
         )}
         {isUserProfile && (
-          <div className="w-1/2 h-full" onClick={() => setIsOpenModal(true)}>
+          <div className="w-1/2 h-full" onClick={() => {
+            if (acquireEditor(editorId)) setIsOpenModal(true);
+          }}>
             <PlusButton className="w-full h-full" />
           </div>
         )}
@@ -118,7 +114,10 @@ const ProjectCard = () => {
       {isUserProfile && (
         <EditModal
           isOpenModal={isOpenModal}
-          setIsOpenModal={setIsOpenModal}
+          setIsOpenModal={(open) => {
+            if (!open) releaseEditor(editorId);
+            setIsOpenModal(open);
+          }}
           className="bg-white max-w-xl min-h-[60vh] flex flex-col"
           title="Add New Project"
           titleClassName="text-2xl font-medium"

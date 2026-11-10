@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import { Separator } from "../ui/separator";
 import { Input } from "../ui/input";
@@ -14,10 +15,24 @@ import { Switch } from "../ui/switch";
 import { useInternship } from "@/context/internshipContext";
 import { Label } from "../ui/label";
 import RadioButton from "../RadioButton";
-import { SalaryType, WorkMode } from "@/types/types";
-import TextEditor from "../TextEditor";
+import { SalaryType } from "@/types/types";
+import {
+  InternshipPostErrors,
+  InternshipPostField,
+} from "@/lib/validation/internshipPost";
 
-function JobDetails() {
+const TextEditor = dynamic(() => import("../TextEditor"), {
+  ssr: false,
+  loading: () => <div className="min-h-[400px] rounded-md bg-white" />,
+});
+
+function JobDetails({
+  errors,
+  onFieldChange,
+}: {
+  errors: InternshipPostErrors;
+  onFieldChange: (field: InternshipPostField) => void;
+}) {
   const { internship, setInternship } = useInternship();
 
   return (
@@ -32,12 +47,18 @@ function JobDetails() {
         <div className="flex-1">
           <TextEditor
             value={internship.description}
-            onChange={(value) =>
-              setInternship({ ...internship, description: value })
-            }
+            onChange={(value) => {
+              setInternship({ ...internship, description: value });
+              onFieldChange("description");
+            }}
             style={{ minHeight: "400px", backgroundColor: "white" }}
             modules={{ toolbar: true }}
           />
+          {errors.description && (
+            <p className="mt-1 text-sm text-red-600" role="alert">
+              {errors.description}
+            </p>
+          )}
         </div>
       </div>
 
@@ -56,12 +77,18 @@ function JobDetails() {
             id="city"
             name="city"
             value={internship.city}
-            onChange={(e) =>
-              setInternship({ ...internship, city: e.target.value })
-            }
+            onChange={(e) => {
+              setInternship({ ...internship, city: e.target.value });
+              onFieldChange("city");
+            }}
             className="flex-1 w-full mt-2"
             placeholder="Enter city"
           />
+          {errors.city && (
+            <p className="mt-1 text-sm text-red-600" role="alert">
+              {errors.city}
+            </p>
+          )}
         </div>
       </div>
 
@@ -74,22 +101,30 @@ function JobDetails() {
             Enter the duration of the internship post.
           </Label>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            id="duration"
-            name="duration"
-            value={internship.duration}
-            onChange={(e) =>
-              setInternship({
-                ...internship,
-                duration: Number.parseInt(e.target.value),
-              })
-            }
-            className="flex-1 w-full mt-2"
-            placeholder="Enter internship duration"
-          />
-          <span>Months</span>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              id="duration"
+              name="duration"
+              value={internship.duration}
+              onChange={(e) => {
+                setInternship({
+                  ...internship,
+                  duration: Number.parseInt(e.target.value),
+                });
+                onFieldChange("duration");
+              }}
+              className="flex-1 w-full mt-2"
+              placeholder="Enter internship duration"
+            />
+            <span>Months</span>
+          </div>
+          {errors.duration && (
+            <p className="text-sm text-red-600" role="alert">
+              {errors.duration}
+            </p>
+          )}
         </div>
       </div>
 
@@ -109,23 +144,25 @@ function JobDetails() {
               id="salary"
               placeholder="Enter Salary"
               value={internship.salary ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
                 setInternship({
                   ...internship,
                   salary: Number.parseFloat(e.target.value),
-                })
-              }
+                });
+                onFieldChange("salary");
+              }}
               className="w-2/3"
               disabled={!internship.paid ? true : false}
             />
             <div className="w-1/3">
               <Select
-                onValueChange={(value: string) =>
+                onValueChange={(value: string) => {
                   setInternship({
                     ...internship,
                     salaryType: value as SalaryType,
-                  })
-                }
+                  });
+                  onFieldChange("salaryType");
+                }}
                 disabled={!internship.paid ? true : false}
                 defaultValue={SalaryType.MONTH}
               >
@@ -140,6 +177,11 @@ function JobDetails() {
               </Select>
             </div>
           </div>
+          {(errors.salary || errors.salaryType) && (
+            <p className="text-sm text-red-600" role="alert">
+              {errors.salary || errors.salaryType}
+            </p>
+          )}
 
           <div className="flex gap-2 mt-2">
             <RadioButton
@@ -156,9 +198,11 @@ function JobDetails() {
               <Switch
                 id="paid"
                 checked={internship.paid}
-                onCheckedChange={(value) =>
-                  setInternship({ ...internship, paid: value })
-                }
+                onCheckedChange={(value) => {
+                  setInternship({ ...internship, paid: value });
+                  onFieldChange("salary");
+                  onFieldChange("salaryType");
+                }}
               />
               <Label htmlFor="paid">Paid</Label>
             </div>

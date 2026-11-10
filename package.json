@@ -31,7 +31,6 @@
     "@radix-ui/react-tooltip": "^1.1.8",
     "@react-pdf-viewer/core": "^3.12.0",
     "@react-pdf-viewer/default-layout": "^3.12.0",
-    "@supabase/supabase-js": "^2.49.4",
     "@tanstack/react-table": "^8.21.2",
     "@types/react-leaflet": "^2.8.3",
     "axios": "^1.7.7",
@@ -66,7 +65,8 @@
     "react-quill-new": "^3.3.3",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",

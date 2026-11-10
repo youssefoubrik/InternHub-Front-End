@@ -3,6 +3,7 @@ import { useAuth } from "@/context/authContext";
 import { Role } from "@/types/types";
 import { Router } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const HeroSection = () => {
@@ -34,28 +35,24 @@ const HeroSection = () => {
             >
               Browse Internships
             </button>
-            <button
-              onClick={() =>
-                router.push(
-                  `/${
-                    currentUser?.role === Role.STUDENT
-                      ? "profile/student/" + currentUser.id
-                      : currentUser?.role === Role.ADMIN
-                      ? "admin"
-                      : !currentUser
-                      ? "signup/company"
-                      : "post-internship"
-                  }`
-                )
-              }
-              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/10 font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105"
+            <Link 
+              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/10 font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105" 
+              href={`/${
+                currentUser?.role === Role.STUDENT
+                  ? "profile/student/" + currentUser.id
+                  : currentUser?.role === Role.ADMIN
+                  ? "admin"
+                  : !currentUser
+                  ? "signup/company"
+                  : "post-internship"
+              }`}
             >
               {currentUser?.role === Role.STUDENT
                 ? "See your profile"
                 : currentUser?.role === Role.ADMIN
                 ? "Admin Dashboard"
                 : "Post an Internship"}
-            </button>
+            </Link>
           </div>
         </div>
         <div className="relative z-10 md:w-1/2 flex justify-center md:justify-end">

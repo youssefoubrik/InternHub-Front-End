@@ -16,6 +16,7 @@ import "react-circular-progressbar/dist/styles.css";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/context/userContext";
+import Link from "next/link";
 
 interface CompanyProfileStatsProps {
   applicants: number;
@@ -34,7 +35,7 @@ const CompanyProfileStats = ({
   const { company } = useUser();
 
   return (
-    <div className="grid grid-cols-2 items-center gap-2 bg-gray-50 border-primary-hover shadow-sm rounded-lg py-6 px-5 w-[75%] mx-auto">
+    <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-2 bg-gray-50 border-primary-hover shadow-sm rounded-lg py-6 px-5 w-full md:w-[75%] md:mx-auto">
       <div className="w-full bg-white p-6 rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <UserPlus className="w-6 h-6 text-blue-500" />
@@ -82,17 +83,14 @@ const CompanyProfileStats = ({
           {rejectedApplicants}
         </div>
       </div>
-      <div className="col-span-2 flex items-center justify-center mt-4">
-        <Button
-          variant="outline"
-          className="text-primary hover:bg-primary hover:text-white group"
-          onClick={() =>
-            router.push(`/company/${company.id}/applications/filter`)
-          }
+      <div className="col-span-full flex items-center justify-center mt-4">
+        <Link
+          href={`/company/${company.id}/applications/filter`}
+          className="text-primary hover:bg-primary hover:text-white group bg-transparent border border-primary rounded-md py-2 px-4 flex items-center gap-2 transition-all duration-200 ease-in-out"
         >
           <span>Manage Applications</span>
           <ArrowRightIcon className="w-6 h-6 text-primary group-hover:text-white" />
-        </Button>
+        </Link>
       </div>
     </div>
   );

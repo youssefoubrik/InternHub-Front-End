@@ -3,7 +3,6 @@ import { Building } from "lucide-react";
 import AnimatedFeatureCard from "./AnimatedFeatureCard";
 import FeatureHeader from "./FeatureHeader";
 import { motion } from "framer-motion";
-import { HomeStatistics } from "@/app/WhyChooseClient";
 
 interface MoroccanCompaniesProps {
   statistics: HomeStatistics;
@@ -27,11 +26,11 @@ const MoroccanCompanies = ({ statistics }: MoroccanCompaniesProps) => {
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
-        <FeatureHeader 
+        <FeatureHeader
           title="Partner with Top Companies on"
           subtitle="Join hundreds of leading Moroccan companies looking for talented interns"
         />
-        
+
         <motion.div
           className="max-w-3xl mx-auto"
           initial={{ opacity: 0 }}

@@ -6,12 +6,14 @@ import { Experience, Role } from "@/types/types";
 import { useUser } from "@/context/userContext";
 import { useAuth } from "@/context/authContext";
 import ExperienceInfos from "./ExperienceInfos";
+import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
 
 const ExperienceCard = () => {
   const { student, isUserProfile } = useUser();
 
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [wantToAdd, setWantToAdd] = useState<boolean>(false);
+  const acquireEditor = useProfileEditLockStore((state) => state.acquire);
 
   useEffect(() => {
     if (student?.experiences) {
@@ -27,7 +29,7 @@ const ExperienceCard = () => {
       <div className="px-4 space-y-4">
         {experiences.length === 0 && !isUserProfile && (
           <div className="col-span-4 text-center">
-            <p className="text-lg text-gray-600">No Experiences found.</p>
+            <p className="text-lg text-gray-600">No Experience found.</p>
           </div>
         )}
         {experiences.map((experience) => (
@@ -48,7 +50,9 @@ const ExperienceCard = () => {
               FLAG="NEW"
             />
           ) : (
-            <PlusButton onClick={() => setWantToAdd(true)} />
+            <PlusButton onClick={() => {
+              if (acquireEditor("experience-new")) setWantToAdd(true);
+            }} />
           ))}
       </div>
     </div>
