@@ -13,13 +13,16 @@ import {
 } from "lucide-react";
 import ProfileAvatar from "../../ProfileAvatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import dynamic from "next/dynamic";
 import { useCompanyProfileDraftStore } from "@/stores/companyProfileDraftStore";
 
 const CompanyMaps = dynamic(
-  () => import("../../company/CompanyMaps").then((module) => module.CompanyMaps),
-  { ssr: false, loading: () => <div className="h-[260px] w-full rounded-lg bg-gray-100" /> },
+  () =>
+    import("../../company/CompanyMaps").then((module) => module.CompanyMaps),
+  {
+    ssr: false,
+    loading: () => <div className="h-[260px] w-full rounded-lg bg-gray-100" />,
+  },
 );
 
 const CompanyUpdateSummary = ({ logo }: { logo: File | null }) => {
@@ -55,7 +58,7 @@ const CompanyUpdateSummary = ({ logo }: { logo: File | null }) => {
                 avatarImage={
                   logo
                     ? URL.createObjectURL(logo as File)
-                    : company?.profilePicture ?? ""
+                    : (company?.profilePicture ?? "")
                 }
                 avatarFallback={
                   <span className="text-white">
@@ -194,11 +197,14 @@ const CompanyUpdateSummary = ({ logo }: { logo: File | null }) => {
             </div>
           </div>
 
-          {company.location?.latitude && company.location?.longitude ? (
+          {company.location?.latitude != null && company.location?.longitude != null ? (
             <div className="flex flex-col flex-grow">
               <div className="flex-grow min-h-full">
                 {/* Use the dynamic import to avoid SSR issues with Leaflet */}
-                <CompanyMaps className="h-full w-full" />
+                <CompanyMaps
+                  className="h-full w-full"
+                  location={company.location}
+                />
               </div>
             </div>
           ) : (

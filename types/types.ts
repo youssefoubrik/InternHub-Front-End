@@ -328,5 +328,7 @@ export interface CompanyFlag {
   studentLastName: string;
   companyEmail: string;
   studentEmail: string;
+  reporterCompanyId?: string | null;
+  reporterCompanyName?: string | null;
   screenshots: string[];
 }

@@ -6,6 +6,7 @@ import L from "leaflet";
 import markerIcon from "@/public/icons/gps.png";
 import { useUser } from "@/context/userContext";
 import { cx } from "class-variance-authority";
+import { MapLocation } from "@/types/types";
 
 // This component will update the map view when position changes
 function MapUpdater({ position }: { position: [number, number] }) {
@@ -30,21 +31,26 @@ const customIcon = new L.Icon({
 
 interface CompanyMapsProps {
   className?: string;
+  location?: MapLocation | null;
 }
 
-export const CompanyMaps = ({ className }: CompanyMapsProps) => {
+export const CompanyMaps = ({
+  className,
+  location: locationOverride,
+}: CompanyMapsProps) => {
   const { company } = useUser();
   const [position, setPosition] = React.useState<[number, number]>([0, 0]);
   const [isLoaded, setIsLoaded] = React.useState(false);
+  const location = locationOverride ?? company?.location;
 
   React.useEffect(() => {
-    const latitude = Number(company?.location?.latitude);
-    const longitude = Number(company?.location?.longitude);
+    const latitude = Number(location?.latitude);
+    const longitude = Number(location?.longitude);
     if (
-      company?.location?.latitude !== null &&
-      company?.location?.latitude !== undefined &&
-      company?.location?.longitude !== null &&
-      company?.location?.longitude !== undefined &&
+      location?.latitude !== null &&
+      location?.latitude !== undefined &&
+      location?.longitude !== null &&
+      location?.longitude !== undefined &&
       Number.isFinite(latitude) &&
       Number.isFinite(longitude) &&
       (latitude !== 0 || longitude !== 0)
@@ -52,8 +58,11 @@ export const CompanyMaps = ({ className }: CompanyMapsProps) => {
       const newPosition: [number, number] = [latitude, longitude];
       setPosition(newPosition);
       setIsLoaded(true);
+    } else {
+      setPosition([0, 0]);
+      setIsLoaded(false);
     }
-  }, [company?.location]);
+  }, [location?.latitude, location?.longitude]);
 
   const defaultPosition: [number, number] = [0, 0];
   const mapsUrl = isLoaded

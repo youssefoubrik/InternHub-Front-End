@@ -57,13 +57,13 @@ interface InternshipContextType {
     message: string,
     subject: string,
     attachments: File[],
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   rejectApplication: (
     applicationId: string,
     message: string,
     subject: string,
     attachments: File[],
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   handleSearchChange: (searchName: string, value: string) => void;
   resetInternshipForm: () => void;
   closeInternship: (internshipId: string) => Promise<Internship | null>;
@@ -314,7 +314,7 @@ export const InternshipContextProvider: React.FC<{
     if (!token) {
       toast.error("Failed to accept application", { id: "accept-application" });
       setLoading(false);
-      return;
+      return false;
     }
 
     try {
@@ -332,10 +332,16 @@ export const InternshipContextProvider: React.FC<{
         },
       });
 
+      setApplications((current) => current.map((application) =>
+        application.id === applicationId ? { ...application, status: ApplicationStatus.ACCEPTED } : application,
+      ));
+
       toast.success("Application accepted successfully");
+      return true;
     } catch (error) {
       console.error("Failed to accept application:", error);
       toast.error("Failed to accept application");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -352,7 +358,7 @@ export const InternshipContextProvider: React.FC<{
     if (!token) {
       toast.error("Failed to reject application", { id: "reject-application" });
       setLoading(false);
-      return;
+      return false;
     }
 
     try {
@@ -370,10 +376,16 @@ export const InternshipContextProvider: React.FC<{
         },
       });
 
+      setApplications((current) => current.map((application) =>
+        application.id === applicationId ? { ...application, status: ApplicationStatus.REJECTED } : application,
+      ));
+
       toast.success("Application rejected successfully");
+      return true;
     } catch (error) {
       console.error("Failed to reject application:", error);
       toast.error("Failed to reject application");
+      return false;
     } finally {
       setLoading(false);
     }

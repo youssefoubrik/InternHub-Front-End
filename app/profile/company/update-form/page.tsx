@@ -19,8 +19,16 @@ import {
 } from "@/lib/validation/companyProfile";
 
 const CompanyLocation = dynamic(
-  () => import("@/components/Profile/company/update-form/CompanyLocation").then((module) => module.CompanyLocation),
-  { ssr: false, loading: () => <div className="mt-5 h-[700px] w-full rounded-lg bg-gray-100" /> },
+  () =>
+    import("@/components/Profile/company/update-form/CompanyLocation").then(
+      (module) => module.CompanyLocation,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="mt-5 h-[700px] w-full rounded-lg bg-gray-100" />
+    ),
+  },
 );
 
 const UpdateCompanyProfile = () => {
@@ -41,7 +49,11 @@ const UpdateCompanyProfile = () => {
       return;
     }
     if (!draft || draft.id !== company.id) {
-      setDraft({ ...company, location: { ...company.location }, links: { ...company.links } });
+      setDraft({
+        ...company,
+        location: { ...company.location },
+        links: { ...company.links },
+      });
     }
   }, [company, currentUser, draft, router, setDraft]);
 
@@ -53,11 +65,23 @@ const UpdateCompanyProfile = () => {
     if (!draft) return false;
     const normalized = normalizeCompanyProfile(draft);
     const allErrors = validateCompanyProfile(normalized);
-    const stepFields: CompanyProfileField[] = currentStep === 1
-      ? ["name", "email", "tel", "ice", "description", "links.linkedin", "links.twitter", "links.website"]
-      : ["location"];
+    const stepFields: CompanyProfileField[] =
+      currentStep === 1
+        ? [
+            "name",
+            "email",
+            "tel",
+            "ice",
+            "description",
+            "links.linkedin",
+            "links.twitter",
+            "links.website",
+          ]
+        : ["location"];
     const stepErrors = Object.fromEntries(
-      stepFields.filter((field) => allErrors[field]).map((field) => [field, allErrors[field]])
+      stepFields
+        .filter((field) => allErrors[field])
+        .map((field) => [field, allErrors[field]]),
     ) as CompanyProfileErrors;
     setErrors((current) => {
       const next = { ...current };
@@ -89,7 +113,10 @@ const UpdateCompanyProfile = () => {
         publicUrl = await uploadFile(logo);
         uploadedUrl = publicUrl;
       }
-      const saved = await updateCompany({ ...normalized, profilePicture: publicUrl });
+      const saved = await updateCompany({
+        ...normalized,
+        profilePicture: publicUrl,
+      });
       if (!saved) {
         if (uploadedUrl) await deleteFile(uploadedUrl).catch(() => undefined);
         return;
@@ -99,7 +126,10 @@ const UpdateCompanyProfile = () => {
         try {
           await deleteFile(company.profilePicture);
         } catch (error) {
-          console.error("Company was updated, but the old logo could not be deleted", error);
+          console.error(
+            "Company was updated, but the old logo could not be deleted",
+            error,
+          );
         }
       }
       resetDraft();
@@ -133,7 +163,12 @@ const UpdateCompanyProfile = () => {
             <h2 className="text-xl font-bold mb-4">
               Update Company Information
             </h2>
-            <CompanyInfosForm logo={logo} setLogo={setLogo} errors={errors} onFieldChange={clearFieldError} />
+            <CompanyInfosForm
+              logo={logo}
+              setLogo={setLogo}
+              errors={errors}
+              onFieldChange={clearFieldError}
+            />
             <div className="w-full flex justify-end">
               <Button
                 label="Next"
@@ -148,7 +183,11 @@ const UpdateCompanyProfile = () => {
           <div>
             <h2 className="text-xl font-bold">Update Company Location</h2>
             <CompanyLocation />
-            {errors.location && <p className="mt-2 text-sm text-red-600" role="alert">{errors.location}</p>}
+            {errors.location && (
+              <p className="mt-2 text-sm text-red-600" role="alert">
+                {errors.location}
+              </p>
+            )}
             <div className="mt-4 flex justify-between">
               <Button
                 label="Previous"

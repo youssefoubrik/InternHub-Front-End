@@ -21,6 +21,7 @@ import axios from "@/lib/axios";
 import { getValidToken } from "@/utils/auth";
 import toast from "react-hot-toast";
 import { useProfileEditLockStore } from "@/stores/profileEditLockStore";
+import { BlockStudentDialog } from "@/components/Dialogs/BlockStudentDialog";
 
 const page = () => {
   const params = useParams();
@@ -33,6 +34,8 @@ const page = () => {
   const [flagReasonError, setFlagReasonError] = useState("");
   const [isSubmittingFlag, setIsSubmittingFlag] = useState(false);
   const [profileResolved, setProfileResolved] = useState(false);
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+  const isAdmin = currentUser?.role === Role.ADMIN;
   const { checkIsUserProfile, getStudent, setStudent, student, isUserProfile } =
     useUser();
 
@@ -105,6 +108,26 @@ const page = () => {
     }
   };
 
+  const handleBlockStudent = async (message: string, subject: string, attachments: File[]) => {
+    try {
+      const token = getValidToken();
+      if (!token) throw new Error("Authentication required");
+      const formData = new FormData();
+      formData.append("message", message);
+      formData.append("subject", subject);
+      attachments.forEach((file) => formData.append("attachments", file));
+      await axios.post(`/students/${studentId}/block`, formData, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+      });
+      if (student) setStudent({ ...student, blocked: true, blockedAt: new Date() });
+      toast.success("Student blocked successfully");
+      setIsBlockDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to block student:", error);
+      toast.error("Failed to block student");
+    }
+  };
+
   const scrollToFlag = () => {
     document
       .getElementById("flag-button")
@@ -113,7 +136,7 @@ const page = () => {
 
   return student && Object.keys(student).length > 0 ? (
     <div className="py-11 flex flex-col gap-5 px-14">
-      {!loading && profileResolved && showAlert && !isUserProfile && (
+      {!loading && profileResolved && showAlert && !isAdmin && !isUserProfile && currentUser && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
@@ -144,7 +167,19 @@ const page = () => {
       <ProjectCard />
       <CertificateCard />
 
-      {!loading && profileResolved && !isUserProfile && (
+      {!loading && profileResolved && isAdmin && student && (
+        <div className="flex justify-center mt-8">
+          <Button
+            variant="destructive"
+            className="w-full md:w-auto"
+            disabled={student.blocked}
+            onClick={() => setIsBlockDialogOpen(true)}
+          >
+            {student.blocked ? "Student blocked" : "Block student"}
+          </Button>
+        </div>
+      )}
+      {!loading && profileResolved && !isAdmin && !isUserProfile && (currentUser?.role === Role.COMPANY) && (
         <div className="flex justify-center mt-8">
           <Button
             id="flag-button"
@@ -242,6 +277,14 @@ const page = () => {
           </div>
         }
       />
+      {isAdmin && student && (
+        <BlockStudentDialog
+          isOpen={isBlockDialogOpen}
+          setIsOpen={setIsBlockDialogOpen}
+          studentToBlock={{ id: studentId, firstName: student.firstName, lastName: student.lastName }}
+          onConfirm={handleBlockStudent}
+        />
+      )}
     </div>
   ) : (
     <NotFound

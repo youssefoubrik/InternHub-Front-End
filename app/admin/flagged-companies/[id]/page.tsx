@@ -192,16 +192,17 @@ export default function Page() {
 
   const columns: ColumnDef<CompanyFlag>[] = [
     {
-      accessorKey: "studentName",
-      header: ({ column }) => (
-        <SortableHeader column={column} label="Student" />
-      ),
-      cell: ({ row }) => (
+      accessorKey: "studentFirstName",
+      header: ({ column }) => <SortableHeader column={column} label="Reported by" />,
+      cell: ({ row }) => row.original.reporterCompanyId ? (
         <Button variant="link" size="sm" className="text-sm p-0" asChild>
-          <Link
-            href={`/profile/student/${row.original.studentId}`}
-            target="_blank"
-          >
+          <Link href={`/profile/company/${row.original.reporterCompanyId}`} target="_blank">
+            {row.original.reporterCompanyName}
+          </Link>
+        </Button>
+      ) : (
+        <Button variant="link" size="sm" className="text-sm p-0" asChild>
+          <Link href={`/profile/student/${row.original.studentId}`} target="_blank">
             {row.original.studentFirstName} {row.original.studentLastName}
           </Link>
         </Button>

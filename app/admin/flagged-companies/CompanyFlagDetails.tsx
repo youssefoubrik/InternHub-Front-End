@@ -83,6 +83,7 @@ export const CompanyFlagDetails = ({
                   <UserRound className="h-4 w-4 text-orange-500" />
                   Reported by
                 </div>
+                {companyFlag.reporterCompanyId ? (
                 <Button
                   variant="link"
                   size="sm"
@@ -90,15 +91,24 @@ export const CompanyFlagDetails = ({
                   asChild
                 >
                   <Link
-                    href={`/profile/student/${companyFlag.studentId}`}
+                    href={`/profile/company/${companyFlag.reporterCompanyId}`}
                     target="_blank"
                   >
-                    {companyFlag.studentFirstName +
-                      " " +
-                      companyFlag.studentLastName}
+                    {companyFlag.reporterCompanyName}
                     <ExternalLink className="ml-2 h-3.5 w-3.5" />
                   </Link>
                 </Button>
+                ) : <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-base font-semibold text-orange-600 hover:text-orange-700"
+                  asChild
+                >
+                  <Link href={`/profile/student/${companyFlag.studentId}`} target="_blank">
+                    {companyFlag.studentFirstName} {companyFlag.studentLastName}
+                    <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                  </Link>
+                </Button>}
               </div>
             </div>
 
